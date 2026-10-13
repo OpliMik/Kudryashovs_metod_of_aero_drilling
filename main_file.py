@@ -8,14 +8,10 @@ import math
 import subprocess
 import os
 import csv
-
-
 def print_result(result):
     print("\nРезультаты расчёта")
     for key, value in result.items():
         print(f"{key}: {value}")
-
-
 def default_data():
     return {
         "brhl_diam_D": 0.093,
@@ -45,11 +41,6 @@ def default_data():
         "ACCLRTN_GRAV_g": 9.81,
         "AIR_ADBTC_INDX_k": 1.4
     }
-
-
-data = default_data()
-
-
 def default_problem():
     return {
         "objective": {
@@ -63,11 +54,6 @@ def default_problem():
             "vkol_min": None,
             "vbt_max": None}
     }
-
-
-problem = default_problem()
-
-
 def validate_problem(problem):
     required_keys = [
         "mode",
@@ -90,8 +76,6 @@ def validate_problem(problem):
             "Не задан параметр цели"
         )
     return True
-
-
 def calc_koef_a0(j):
     if j == 1:
         return 2
@@ -101,25 +85,15 @@ def calc_koef_a0(j):
         return 0
     else:
         print("Ошибка: некорректное значение j")
-
-
 def calc_pressure_up(Ph, lambd, kr, nu, a, l, b):
     return (math.sqrt(Ph ** 2 + lambd * (1 + kr * nu) * a * l) + Ph * (1 + nu) * b * l) / (
                 1 - (1 - nu) * b * l) * 10 ** (-6)
-
-
 def calc_pressure_down(Ph, lambd, a, l, le, b):
     return (math.sqrt(Ph ** 2 + lambd * a * (l + le) / (1 + b * l)) - ((Ph * b * l) / (1 + b * l))) * 10 ** (-6)
-
-
 def calc_an(G, R, T, Den, Fn):
     return (G ** 2 * R * T / (Den * Fn ** 2))
-
-
 def calc_lambdn(Den):
     return (0.009407 / Den ** (1 / 3))
-
-
 def hydraulic_model(data, G):
     brhl_diam_D = data["brhl_diam_D"]
     dpth_h = data["dpth_h"]
@@ -197,8 +171,6 @@ def hydraulic_model(data, G):
         "vkol": vkol,
         "vbt": vbt
     }
-
-
 def calculate_state(data, state):
     result = {
         "inputs": {},
@@ -207,14 +179,9 @@ def calculate_state(data, state):
     }
     result["inputs"] = state.copy()
     G = state["G"]
-    hydraulic = hydraulic_model(
-        data,
-        G
-    )
+    hydraulic = hydraulic_model( data, G)
     result["outputs"] = hydraulic
     return result
-
-
 def default_variables():
     return {
         "G": {
@@ -242,23 +209,6 @@ def default_variables():
             "direction": None
         }
     }
-
-
-variables = default_variables()
-variables["G"]["value"] = 40
-variables["G"]["min"] = 1
-variables["G"]["max"] = 100
-variables["G"]["active"] = True
-variables["G"]["step"] = 0.2
-variables["G"]["direction"] = 1
-variables["N"]["value"] = None
-variables["N"]["min"] = 0.1
-variables["N"]["max"] = 50000.0
-variables["N"]["active"] = False
-variables["N"]["step"] = 10
-variables["N"]["direction"] = 1
-
-
 def validate_variables(variables, problem):
     errors = []
     objective_parameter = problem["objective"]["parameter"]
@@ -320,8 +270,6 @@ def validate_variables(variables, problem):
         "valid": len(errors) == 0,
         "errors": errors
     }
-
-
 def apply_variables(variables):
     state = {}
 
@@ -331,8 +279,6 @@ def apply_variables(variables):
             state[name] = var["value"]
 
     return state
-
-
 def check_constraints(result, problem):
     checks = {
         "valid": True,
@@ -365,8 +311,6 @@ def check_constraints(result, problem):
                     f"{parameter} меньше {limit}"
                 )
     return checks
-
-
 def evaluate_objective(result, problem):
     objective = problem["objective"]
     parameter = objective["parameter"]
@@ -380,14 +324,7 @@ def evaluate_objective(result, problem):
         "error": error,
         "abs_error": abs(error)
     }
-
-
-def solver(data, problem, variables,
-           tolerance=1e-6,
-           max_iterations=100):
-    # -----------------------------
-    # Проверка постановки задачи
-    # -----------------------------
+def solver(data, problem, variables, tolerance=1e-6, max_iterations=100):
     validate_problem(problem)
     check = validate_variables(
         variables,
@@ -397,9 +334,6 @@ def solver(data, problem, variables,
         raise ValueError(
             "\n".join(check["errors"])
         )
-    # -----------------------------
-    # Поиск активной переменной
-    # -----------------------------
     active = None
     for name, var in variables.items():
         if var["active"]:
@@ -410,10 +344,6 @@ def solver(data, problem, variables,
             "Нет активной переменной."
         )
     direction = variables[active]["direction"]
-
-    # -----------------------------
-    # Внутренняя функция одного расчёта
-    # -----------------------------
     def evaluate(value):
         variables[active]["value"] = value
         state = apply_variables(
@@ -436,40 +366,28 @@ def solver(data, problem, variables,
             "constraints": constraints,
             "evaluation": evaluation
         }
-
-    # -----------------------------
-    # Начальные границы поиска
-    # -----------------------------
     left = variables[active]["min"]
     right = variables[active]["max"]
-    # Проверяем левую границу
     left_step = evaluate(left)
-
     left_error = (
             left_step["evaluation"]["error"]
             * direction
     )
-    # Проверяем правую границу
     right_step = evaluate(right)
     right_error = (
             right_step["evaluation"]["error"]
             * direction
     )
-    # Для бисекции нужен разный знак ошибки
     if left_error * right_error > 0:
         raise RuntimeError(
             "На заданном диапазоне "
             "нет решения."
         )
-    # -----------------------------
-    # Основной цикл бисекции
-    # -----------------------------
     for iteration in range(max_iterations):
         value = (left + right) / 2
         step = evaluate(value)
         evaluation = step["evaluation"]
         constraints = step["constraints"]
-        # Проверяем достижение цели
         if (
                 constraints["valid"]
                 and
@@ -484,7 +402,6 @@ def solver(data, problem, variables,
                     "value": value
                 }
             }
-        # Определяем, какую половину оставить
         current_error = (
                 evaluation["error"]
                 * direction
@@ -493,19 +410,10 @@ def solver(data, problem, variables,
             right = value
         else:
             left = value
-    # -----------------------------
-    # Решение не найдено
-    # -----------------------------
     raise RuntimeError(
         "Достигнуто максимальное "
         "количество итераций."
     )
-
-
-solution = solver(data, problem, variables)
-print(solution)
-
-
 def input_brhl_diam_D():
     d = input("Введите диаметр скважины (м): ")
     try:
@@ -517,8 +425,6 @@ def input_brhl_diam_D():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 12.5).\n")
         return input_brhl_diam_D()
-
-
 def input_dpth_h():
     h = input("Введите глубину скважины (м): ")
     try:
@@ -530,8 +436,6 @@ def input_dpth_h():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 300).\n")
         return input_dpth_h()
-
-
 def input_drilling_angle_alfa():
     alfa = input("Введите угол наклона к горизонту (град): ")
     try:
@@ -543,8 +447,6 @@ def input_drilling_angle_alfa():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 90).\n")
         return input_drilling_angle_alfa()
-
-
 def input_out_diam_dril_pipe_d():
     d = input("Введите наружный диаметр бурильной трубы (м): ")
     try:
@@ -556,8 +458,6 @@ def input_out_diam_dril_pipe_d():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 0.05).\n")
         return input_out_diam_dril_pipe_d()
-
-
 def input_in_diam_dril_pipe_d1():
     d = input("Введите внутренний диаметр бурильной трубы (м): ")
     try:
@@ -569,8 +469,6 @@ def input_in_diam_dril_pipe_d1():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 0.039).\n")
         return input_in_diam_dril_pipe_d1()
-
-
 def input_cnctn_type_j():
     j = input("Выберите тип соединения бурильной трубы (1 - муфтово-замковый, 2 - нипельный, 3 - ССК): ")
     try:
@@ -582,8 +480,6 @@ def input_cnctn_type_j():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (1, 2 или 3).\n")
         return input_cnctn_type_j()
-
-
 def input_diam_chnl_join_d3():
     d = input("Введите диаметр канала соединения (м): ")
     try:
@@ -595,8 +491,6 @@ def input_diam_chnl_join_d3():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 0.028).\n")
         return input_diam_chnl_join_d3()
-
-
 def input_pipe_lngth_lt():
     lt = input("Введите длину бурильной трубы (м): ")
     try:
@@ -608,8 +502,6 @@ def input_pipe_lngth_lt():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 4.5).\n")
         return input_pipe_lngth_lt()
-
-
 def input_out_diam_core_pipe_dh():
     dh = input("Введите наружный диаметр колонковой трубы (м): ")
     try:
@@ -621,8 +513,6 @@ def input_out_diam_core_pipe_dh():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 0.089).\n")
         return input_out_diam_core_pipe_dh()
-
-
 def input_in_diam_core_pipe_db():
     db = input("Введите внутренний диаметр колонковой трубы (м): ")
     try:
@@ -634,8 +524,6 @@ def input_in_diam_core_pipe_db():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 0.079).\n")
         return input_in_diam_core_pipe_db()
-
-
 def input_core_pipe_lngth_lk():
     lk = input("Введите длину колонковой трубы (м): ")
     try:
@@ -647,8 +535,6 @@ def input_core_pipe_lngth_lk():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 5).\n")
         return input_core_pipe_lngth_lk()
-
-
 def input_core_diam_dk():
     dk = input("Введите диаметр керна (м): ")
     try:
@@ -660,8 +546,6 @@ def input_core_diam_dk():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 0.073).\n")
         return input_core_diam_dk()
-
-
 def input_core_out_bk():
     bk = input("Введите выход керна (м): ")
     try:
@@ -673,8 +557,6 @@ def input_core_out_bk():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 80).\n")
         return input_core_out_bk()
-
-
 def input_rock_density_ro():
     ro = input("Введите плотность породы (кг/м³): ")
     try:
@@ -686,8 +568,6 @@ def input_rock_density_ro():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 2300).\n")
         return input_rock_density_ro()
-
-
 def input_mech_spd_vm():
     vm = input("Введите механическую скорость (м/ч): ")
     try:
@@ -699,8 +579,6 @@ def input_mech_spd_vm():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 6).\n")
         return input_mech_spd_vm()
-
-
 def input_tool_type_j1():
     j1 = input("Выберите тип инструмента (1 - алмазная коронка, 2 - твёрдосплавная коронка, 3 - долото): ")
     try:
@@ -712,8 +590,6 @@ def input_tool_type_j1():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (1, 2 или 3).\n")
         return input_tool_type_j1()
-
-
 def input_well_temp_t():
     t = input("Введите температуру в скважине (К): ")
     try:
@@ -725,8 +601,6 @@ def input_well_temp_t():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 290).\n")
         return input_well_temp_t()
-
-
 def input_rqrd_up_spd_v1():
     v1 = input("Введите требуемую скорость подъема (м/ч): ")
     try:
@@ -738,8 +612,6 @@ def input_rqrd_up_spd_v1():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 6).\n")
         return input_rqrd_up_spd_v1()
-
-
 def input_comprsr_effency_ni():
     ni = input("Введите КПД компрессора (от 0 до 100): ")
     try:
@@ -751,8 +623,6 @@ def input_comprsr_effency_ni():
     except ValueError:
         print("Вы ввели некорректное значение. Введите число (например, 30).\n")
         return input_comprsr_effency_ni()
-
-
 def metod_rash_kudr():
     while True:
         def metod_rash_kudr1():
@@ -842,7 +712,7 @@ def metod_rash_kudr():
                 'Объемный расход воздуха': round(air_cons_q, 3)}
             return 0
 
-        def metod_rash_kudr2():
+        def metod_rash_kudr2(data):
             print("\nРежим автоматического ввода")
             brhl_diam_D = data["brhl_diam_D"]
             dpth_h = data["dpth_h"]
@@ -943,88 +813,7 @@ def metod_rash_kudr():
     return 0
 
     print_result(result)
-
-
-# def hydraulic_model(data, G):
-#     brhl_diam_D = data["brhl_diam_D"]
-#     dpth_h = data["dpth_h"]
-#     drilling_angle_alfa = data["drilling_angle_alfa"]
-#     out_diam_dril_pipe_d = data["out_diam_dril_pipe_d"]
-#     in_diam_dril_pipe_d1 = data["in_diam_dril_pipe_d1"]
-#     cnctn_type_j = data["cnctn_type_j"]
-#     diam_chnl_join_d3 = data["diam_chnl_join_d3"]
-#     pipe_lngth_lt = data["pipe_lngth_lt"]
-#     out_diam_core_pipe_dh = data["out_diam_core_pipe_dh"]
-#     in_diam_core_pipe_db = data["in_diam_core_pipe_db"]
-#     core_pipe_lngth_lk = data["core_pipe_lngth_lk"]
-#     core_diam_dk = data["core_diam_dk"]
-#     core_out_bk = data["core_out_bk"]
-#     rock_density_ro = data["rock_density_ro"]
-#     mech_spd_vm = data["mech_spd_vm"]
-#     tool_type_j1 = data["tool_type_j1"]
-#     gast_koef_kr = data["gast_koef_kr"]
-#     coef_spd_unvnss_k = data["coef_spd_unvnss_k"]
-#     coef_red_lift_frc_k1 = data["coef_red_lift_frc_k1"]
-#     well_temp_t = data["well_temp_t"]
-#     rqrd_up_spd_v1 = data["rqrd_up_spd_v1"]
-#     comprsr_effency_ni = data["comprsr_effency_ni"]
-#     ATM_PRSSR_P0 = data["ATM_PRSSR_P0"]
-#     GAS_CONST_R = data["GAS_CONST_R"]
-#     ACCLRTN_GRAV_g = data["ACCLRTN_GRAV_g"]
-#     AIR_ADBTC_INDX_k = data["AIR_ADBTC_INDX_k"]
-#     drill_pipe_lngth_hbt = dpth_h - core_pipe_lngth_lk
-#     a0 = calc_koef_a0(cnctn_type_j)
-#     f1 = math.pi * (brhl_diam_D ** 2 - out_diam_dril_pipe_d ** 2) / 4
-#     f2 = math.pi * in_diam_dril_pipe_d1 ** 2 / 4
-#     f3 = math.pi * (brhl_diam_D ** 2 - out_diam_core_pipe_dh ** 2) / 4
-#     f4 = math.pi * (in_diam_core_pipe_db ** 2 - core_diam_dk ** 2) / 4
-#     De1 = brhl_diam_D - out_diam_dril_pipe_d
-#     De2 = in_diam_dril_pipe_d1
-#     De3 = brhl_diam_D - out_diam_core_pipe_dh
-#     De4 = in_diam_core_pipe_db - core_diam_dk
-#     air_density_ron = ATM_PRSSR_P0 / (GAS_CONST_R * 273)
-#     mass_air_cons_g = G
-#     air_cons_q = mass_air_cons_g * 60 / air_density_ron
-#     mass_rock_face_gz = math.pi / 4 * (brhl_diam_D ** 2 - core_out_bk * core_diam_dk ** 2 / 100) * rock_density_ro * mech_spd_vm / 3600
-#     sludge_conc_nu = mass_rock_face_gz / mass_air_cons_g
-#     c = GAS_CONST_R * well_temp_t
-#     b = ACCLRTN_GRAV_g * math.sin(drilling_angle_alfa * math.pi / 180) / (2 * c)
-#     e = mass_air_cons_g ** 2 * c
-#     a1 = calc_an(mass_air_cons_g, GAS_CONST_R, well_temp_t, De1, f1)
-#     a2 = calc_an(mass_air_cons_g, GAS_CONST_R, well_temp_t, De2, f2)
-#     a3 = calc_an(mass_air_cons_g, GAS_CONST_R, well_temp_t, De3, f3)
-#     a4 = calc_an(mass_air_cons_g, GAS_CONST_R, well_temp_t, De4, f4)
-#     lambd1 = calc_lambdn(De1)
-#     lambd2 = calc_lambdn(De2)
-#     lambd3 = calc_lambdn(De3)
-#     lambd4 = calc_lambdn(De4)
-#     nc = math.ceil(drill_pipe_lngth_hbt / pipe_lngth_lt)
-#     csi = a0 * ((in_diam_dril_pipe_d1 / diam_chnl_join_d3) ** 2 - 1) ** 2
-#     le = in_diam_dril_pipe_d1 * nc * csi / lambd2
-#     P1 = calc_pressure_up(ATM_PRSSR_P0, lambd1, gast_koef_kr, sludge_conc_nu, a1, drill_pipe_lngth_hbt, b)
-#     P2 = calc_pressure_up(P1 * 10 ** 6, lambd3, gast_koef_kr, sludge_conc_nu, a3, core_pipe_lngth_lk, b)
-#     P3 = calc_pressure_down(P2 * 10 ** 6, lambd4, a4, core_pipe_lngth_lk, 0, b)
-#     P4 = calc_pressure_down(P3 * 10 ** 6, lambd2, a2, drill_pipe_lngth_hbt, le, b)
-#     Pres = P4 + 0.05
-#     N = AIR_ADBTC_INDX_k / (AIR_ADBTC_INDX_k - 1) * ATM_PRSSR_P0 * air_cons_q / 60 * ((Pres * 10 ** 6 / ATM_PRSSR_P0) ** ((coef_spd_unvnss_k - 1) / coef_spd_unvnss_k) - 1) / comprsr_effency_ni
-#     vkol = air_cons_q / (60 * f1)
-#     vbt = air_cons_q / (60 * f2)
-#     return {
-#         "P1": P1,
-#         "P2": P2,
-#         "P3": P3,
-#         "P4": P4,
-#         "Pres": Pres,
-#         "N": N,
-#         "vkol": vkol,
-#         "vbt": vbt
-#     }
-#     print_result(result)
-def check_constraints(result,
-                      N_max=40000,
-                      Vkol_min=12,
-                      Vbt_max=120,
-                      P4_max=5):
+def check_constraints(result, N_max=40000, Vkol_min=12, Vbt_max=120, P4_max=5):
     print("\n" + "=" * 55)
     print("ПРОВЕРКА ДОПУСТИМОСТИ РЕЖИМА")
     print("=" * 55)
@@ -1072,21 +861,15 @@ def check_constraints(result,
         print("ИТОГ: РЕЖИМ НЕ ДОПУСТИМ")
     print("=" * 55)
     return ok
-
-
 def get_parameter(G, parameter):
     data = default_data()
     result = hydraulic_model(data, G)
     if parameter not in result:
         print(f"Параметр '{parameter}' отсутствует в модели.")
     return result[parameter]
-
-
 def residual(G, parameter, target_value):
     value = get_parameter(G, parameter)
     return value - target_value
-
-
 def check_target(parameter, target, Gmin=0.01, Gmax=2):
     names = {
         "P1": "P1",
@@ -1112,14 +895,7 @@ def check_target(parameter, target, Gmin=0.01, Gmax=2):
         return False
     print("\nКорень находится внутри интервала.")
     return True
-
-
-def bisection(parameter,
-              target,
-              Gmin=0.01,
-              Gmax=100,
-              eps=1e-5,
-              max_iter=100):
+def bisection(parameter, target, Gmin=0.01, Gmax=100, eps=1e-5, max_iter=100):
     if not check_target(parameter, target, Gmin, Gmax):
         return None
     history = []
@@ -1153,28 +929,12 @@ def bisection(parameter,
             Gmin = Gmid
     print("\nДостигнут предел итераций.")
     return None
-
-
 def input_parameter():
     parameter = input("Введите параметр для расчёта (P1, P2, P3, P4, Pres, N, vkol, vbt): ")
     if parameter not in ["P1", "P2", "P3", "P4", "Pres", "N", "vkol", "vbt"]:
         print("Некорректный параметр. Пожалуйста, выберите из списка: P1, P2, P3, P4, Pres, N, vkol, vbt.")
         return input_parameter()
     return parameter
-
-
-parameter = input_parameter()
-result = bisection(parameter, target=0.67)
-if result is not None:
-    data = default_data()
-    print("\nИТОГ")
-    print(f"G = {result['G']:.6f} кг/с")
-    print(f"{parameter} = {result['value']:.6f}")
-    print(f"Итераций = {result['iterations']}")
-    model = hydraulic_model(data, result["G"])
-    check_constraints(model)
-
-
 def scan_G():
     G = 0.05
     step = 0.05
@@ -1274,8 +1034,6 @@ def scan_G():
             ])
 
     print("\nCSV-файл scan_G_results.csv успешно сохранён.")
-
-
 def programm_menu():
     subprocess.call('cls' if os.name == 'nt' else 'clear', shell=True)
     print("Меню программы расчёта показателей бурения с использованием воздуха\n")
@@ -1288,4 +1046,35 @@ def programm_menu():
     elif int(vibor_podprogrami) == 2:
         pass
     return 0
-# programm_menu()
+def main():
+    data = default_data()
+    problem = default_problem()
+    state = {"G": 13.98452341556549}
+    state = calculate_state(data)
+    variables = default_variables()
+    variables["G"]["value"] = 40
+    variables["G"]["min"] = 1
+    variables["G"]["max"] = 100
+    variables["G"]["active"] = True
+    variables["G"]["step"] = 0.2
+    variables["G"]["direction"] = 1
+    variables["N"]["value"] = None
+    variables["N"]["min"] = 0.1
+    variables["N"]["max"] = 50000.0
+    variables["N"]["active"] = False
+    variables["N"]["step"] = 10
+    variables["N"]["direction"] = 1
+    solution = solver(data, problem, variables)
+    parameter = input_parameter()
+    result = bisection(parameter, target=0.67)
+    if result is not None:
+        data = default_data()
+        print("\nИТОГ")
+        print(f"G = {result['G']:.6f} кг/с")
+        print(f"{parameter} = {result['value']:.6f}")
+        print(f"Итераций = {result['iterations']}")
+        model = hydraulic_model(data, result["G"])
+        check_constraints(model)
+    # programm_menu()
+if __name__ == "__main__":
+    main()
