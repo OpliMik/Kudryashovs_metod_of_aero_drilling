@@ -86,14 +86,24 @@ def calc_koef_a0(j):
     else:
         print("Ошибка: некорректное значение j")
 def calc_pressure_up(Ph, lambd, kr, nu, a, l, b):
-    return (math.sqrt(Ph ** 2 + lambd * (1 + kr * nu) * a * l) + Ph * (1 + nu) * b * l) / (
-                1 - (1 - nu) * b * l) * 10 ** (-6)
+    z = (1 + nu) * b
+    numerator = (math.sqrt(Ph ** 2 + lambd * (1 + kr * nu) * a * l)+ Ph * z * l)/ (1 - z * l) * 1e-6
+    return numerator
+# def calc_pressure_up(Ph, lambd, kr, nu, a, l, b):
+#     return (math.sqrt(Ph ** 2 + lambd * (1 + kr * nu) * a * l) + Ph * (1 + nu) * b * l) / (1 - (1 - nu) * b * l) * 10 ** (-6)
 def calc_pressure_down(Ph, lambd, a, l, le, b):
-    return (math.sqrt(Ph ** 2 + lambd * a * (l + le) / (1 + b * l)) - ((Ph * b * l) / (1 + b * l))) * 10 ** (-6)
+    numerator = (math.sqrt(Ph ** 2 + lambd * a * (l + le))- Ph * b * l) / (1 + b * l) * 1e-6
+    return numerator
+# def calc_pressure_down(Ph, lambd, a, l, le, b):
+#     return (math.sqrt(Ph ** 2 + lambd * a * (l + le) / (1 + b * l)) - ((Ph * b * l) / (1 + b * l))) * 10 ** (-6)
 def calc_an(G, R, T, Den, Fn):
     return (G ** 2 * R * T / (Den * Fn ** 2))
+# def calc_lambdn(Den):
+#     return (0.009407 / Den ** (1 / 3))
 def calc_lambdn(Den):
-    return (0.009407 / Den ** (1 / 3))
+    return 0.009407 / Den ** 0.333
+def calculate_air_flow(data):
+    return (47.1 * data["coef_spd_unvnss_k"] * data["coef_red_lift_frc_k1"] * (data["brhl_diam_D"] ** 2 - data["out_diam_dril_pipe_d"] ** 2) * data["rqrd_up_spd_v1"])
 def hydraulic_model(data, G):
     brhl_diam_D = data["brhl_diam_D"]
     dpth_h = data["dpth_h"]
@@ -134,8 +144,11 @@ def hydraulic_model(data, G):
     air_density_ron = ATM_PRSSR_P0 / (GAS_CONST_R * 273)
     air_cons_q = G
     mass_air_cons_g = air_cons_q * air_density_ron / 60
-    mass_rock_face_gz = math.pi / 4 * (
-                brhl_diam_D ** 2 - core_out_bk * core_diam_dk ** 2 / 100) * rock_density_ro * mech_spd_vm / 3600
+    mass_air_cons_g_basic = (air_cons_q * ATM_PRSSR_P0/ (60 * GAS_CONST_R * well_temp_t))
+    print(f"Массовый расход при 273 К: {mass_air_cons_g:.8f} кг/с")
+    print(f"Массовый расход по BASIC: {mass_air_cons_g_basic:.8f} кг/с")
+    mass_rock_face_gz = math.pi / 4 * (brhl_diam_D ** 2 - core_out_bk * core_diam_dk ** 2 / 100) * rock_density_ro * mech_spd_vm / 3600
+    mass_air_cons_g = mass_air_cons_g_basic
     sludge_conc_nu = mass_rock_face_gz / mass_air_cons_g
     c = GAS_CONST_R * well_temp_t
     b = ACCLRTN_GRAV_g * math.sin(drilling_angle_alfa * math.pi / 180) / (2 * c)
@@ -148,17 +161,23 @@ def hydraulic_model(data, G):
     lambd2 = calc_lambdn(De2)
     lambd3 = calc_lambdn(De3)
     lambd4 = calc_lambdn(De4)
-    nc = math.ceil(drill_pipe_lngth_hbt / pipe_lngth_lt)
+    # nc = math.ceil(drill_pipe_lngth_hbt / pipe_lngth_lt)
+    nc = dpth_h / pipe_lngth_lt
     csi = a0 * ((in_diam_dril_pipe_d1 / diam_chnl_join_d3) ** 2 - 1) ** 2
     le = in_diam_dril_pipe_d1 * nc * csi / lambd2
+    print(f"H={dpth_h}, lt={pipe_lngth_lt}, nc={nc}, le={le}")
     P1 = calc_pressure_up(ATM_PRSSR_P0, lambd1, gast_koef_kr, sludge_conc_nu, a1, drill_pipe_lngth_hbt, b)
     P2 = calc_pressure_up(P1 * 10 ** 6, lambd3, gast_koef_kr, sludge_conc_nu, a3, core_pipe_lngth_lk, b)
-    P3 = calc_pressure_down(P2 * 10 ** 6, lambd4, a4, core_pipe_lngth_lk, 0, b)
+    core_flow_length = core_out_bk * core_pipe_lngth_lk / 100
+    # P3 = calc_pressure_down(P2 * 10 ** 6, lambd4, a4, core_pipe_lngth_lk, 0, b)
+    P3 = calc_pressure_down(P2 * 10 ** 6, lambd4, a4, core_flow_length, 0, b)
     P4 = calc_pressure_down(P3 * 10 ** 6, lambd2, a2, drill_pipe_lngth_hbt, le, b)
     Pres = P4 + 0.05
-    N = AIR_ADBTC_INDX_k / (AIR_ADBTC_INDX_k - 1) * ATM_PRSSR_P0 * air_cons_q / 60 * (
-                (Pres * 10 ** 6 / ATM_PRSSR_P0) ** (
-                    (coef_spd_unvnss_k - 1) / coef_spd_unvnss_k) - 1) / comprsr_effency_ni
+    N0 = 0.98
+    N_basic_kw = 11 * N0 * air_cons_q * Pres
+    print(f"Мощность по BASIC: {N_basic_kw:.6f} кВт")
+    N = AIR_ADBTC_INDX_k / (AIR_ADBTC_INDX_k - 1) * ATM_PRSSR_P0 * air_cons_q / 60 * ((Pres * 10 ** 6 / ATM_PRSSR_P0) ** ((coef_spd_unvnss_k - 1) / coef_spd_unvnss_k) - 1) / comprsr_effency_ni
+    N_thermo_kw = N / 1000
     vkol = air_cons_q / (60 * f1)
     vbt = air_cons_q / (60 * f2)
     return {
@@ -1048,6 +1067,10 @@ def programm_menu():
     return 0
 def main():
     data = default_data()
+    Q = calculate_air_flow(data)
+    result = hydraulic_model(data, Q)
+    print(f"Подача воздуха: {Q:.6f} м³/мин")
+    print_result(result)
     problem = default_problem()
     state = {"G": 13.98452341556549}
     state = calculate_state(data)
