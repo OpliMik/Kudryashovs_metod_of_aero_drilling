@@ -1,17 +1,17 @@
-from unittest import result
-from inspect import Parameter
-from re import A, match
-import matplotlib.pyplot as plt
-from tkinter import ROUND
-from turtle import lt
 import math
 import subprocess
 import os
 import csv
 def print_result(result):
     print("\nРезультаты расчёта")
+    units = {"P1": "МПа", "P2": "МПа", "P3": "МПа", "P4": "МПа", "Pres": "МПа", "vkol": "м/с", "vbt": "м/с"}
     for key, value in result.items():
-        print(f"{key}: {value}")
+        if key == "N":
+            print(f"{key}: {value / 1000:.3f} кВт")
+        elif key in units:
+            print(f"{key}: {value:.6f} {units[key]}")
+        else:
+            print(f"{key}: {value}")
 def default_data():
     return {
         "brhl_diam_D": 0.093,
@@ -95,6 +95,9 @@ def calc_an(G, R, T, Den, Fn):
 def calc_lambdn(Den):
     return (0.009407 / Den ** (1 / 3))
 def hydraulic_model(data, G):
+    """G: объёмный расход при 273 К и P0, м³/мин; N возвращается в Вт."""
+    if not math.isfinite(G) or G <= 0:
+        raise ValueError("Объёмный расход G должен быть положительным конечным числом, м³/мин")
     brhl_diam_D = data["brhl_diam_D"]
     dpth_h = data["dpth_h"]
     drilling_angle_alfa = data["drilling_angle_alfa"]
@@ -194,7 +197,7 @@ def default_variables():
         },
         "N": {
             "value": None,
-            "active": True,
+            "active": False,
             "min": None,
             "max": None,
             "step": None,
@@ -803,7 +806,7 @@ def metod_rash_kudr():
             result = metod_rash_kudr1()
             break
         elif int(vibor_vvod_kudr) == 2:
-            result = metod_rash_kudr2()
+            result = metod_rash_kudr2(default_data())
             break
         else:
             print("Вы ввели некорректное значение. Попробуйте снова.\n")
@@ -813,7 +816,7 @@ def metod_rash_kudr():
     return 0
 
     print_result(result)
-def check_constraints(result, N_max=40000, Vkol_min=12, Vbt_max=120, P4_max=5):
+def print_constraints(result, N_max=40000, Vkol_min=12, Vbt_max=120, P4_max=5):
     print("\n" + "=" * 55)
     print("ПРОВЕРКА ДОПУСТИМОСТИ РЕЖИМА")
     print("=" * 55)
@@ -847,12 +850,12 @@ def check_constraints(result, N_max=40000, Vkol_min=12, Vbt_max=120, P4_max=5):
         ok = False
     if result["N"] <= N_max:
         print(f"[ OK ] Мощность компрессора "
-              f"{result['N']:.1f} Вт "
-              f"(норма ≤ {N_max:.1f})")
+              f"{result['N'] / 1000:.3f} кВт "
+              f"(норма ≤ {N_max / 1000:.3f} кВт)")
     else:
         print(f"[FAIL] Мощность компрессора "
-              f"{result['N']:.1f} Вт "
-              f"(допустимо ≤ {N_max:.1f})")
+              f"{result['N'] / 1000:.3f} кВт "
+              f"(допустимо ≤ {N_max / 1000:.3f} кВт)")
         ok = False
     print("=" * 55)
     if ok:
@@ -935,10 +938,12 @@ def input_parameter():
         print("Некорректный параметр. Пожалуйста, выберите из списка: P1, P2, P3, P4, Pres, N, vkol, vbt.")
         return input_parameter()
     return parameter
-def scan_G():
-    G = 0.05
-    step = 0.05
-    G_max = 100.00
+def scan_G(data=None, G_min=0.05, G_max=100.0, step=0.05, output_file="scan_G_results.csv"):
+    if not all(math.isfinite(value) for value in (G_min, G_max, step)) or G_min <= 0 or G_max < G_min or step <= 0:
+        raise ValueError("Требуются 0 < G_min ≤ G_max и положительный шаг; значения должны быть конечными")
+    if data is None:
+        data = default_data()
+    print("G: м³/мин; P4: МПа; N: кВт; vkol: м/с; производные по расходу G")
     print(f"{'G':>6} {'P4':>8} {'N':>12} {'vkol':>8} {'dP4/dG':>10} {'dN/dG':>12} {'dv/dG':>10}")
     print("-" * 85)
     G_values = []
@@ -955,13 +960,15 @@ def scan_G():
     prev_P4 = None
     prev_N = None
     prev_V = None
-    while G <= G_max:
-        result = hydraulic_model(G)
+    count = math.floor((G_max - G_min) / step + 1e-9) + 1
+    for index in range(count):
+        G = G_min + index * step
+        result = hydraulic_model(data, G)
         P1 = result["P1"]
         P2 = result["P2"]
         P3 = result["P3"]
         P4 = result["P4"]
-        N = result["N"]
+        N = result["N"] / 1000
         vkol = result["vkol"]
         vbt = result["vbt"]
         G_values.append(G)
@@ -996,8 +1003,7 @@ def scan_G():
         prev_P4 = P4
         prev_N = N
         prev_V = vkol
-        G += step
-    with open("scan_G_results.csv",
+    with open(output_file,
               "w",
               newline="",
               encoding="utf-8-sig") as file:
@@ -1005,12 +1011,12 @@ def scan_G():
         writer = csv.writer(file, delimiter=";")
 
         writer.writerow([
-            "G, кг/с",
+            "G, м³/мин (273 К, P0)",
             "P1, МПа",
             "P2, МПа",
             "P3, МПа",
             "P4, МПа",
-            "N, Вт",
+            "N, кВт",
             "vкольц, м/с",
             "vБТ, м/с",
             "dP4/dG",
@@ -1033,7 +1039,7 @@ def scan_G():
                 dV_values[i]
             ])
 
-    print("\nCSV-файл scan_G_results.csv успешно сохранён.")
+    print(f"\nCSV-файл {output_file} успешно сохранён.")
 def programm_menu():
     subprocess.call('cls' if os.name == 'nt' else 'clear', shell=True)
     print("Меню программы расчёта показателей бурения с использованием воздуха\n")
@@ -1049,10 +1055,9 @@ def programm_menu():
 def main():
     data = default_data()
     problem = default_problem()
-    state = {"G": 13.98452341556549}
-    state = calculate_state(data)
     variables = default_variables()
-    variables["G"]["value"] = 40
+    # G остаётся прежним именем переменной, но измеряется в м³/мин.
+    variables["G"]["value"] = 4.5
     variables["G"]["min"] = 1
     variables["G"]["max"] = 100
     variables["G"]["active"] = True
@@ -1065,16 +1070,16 @@ def main():
     variables["N"]["step"] = 10
     variables["N"]["direction"] = 1
     solution = solver(data, problem, variables)
-    parameter = input_parameter()
-    result = bisection(parameter, target=0.67)
-    if result is not None:
-        data = default_data()
-        print("\nИТОГ")
-        print(f"G = {result['G']:.6f} кг/с")
-        print(f"{parameter} = {result['value']:.6f}")
-        print(f"Итераций = {result['iterations']}")
-        model = hydraulic_model(data, result["G"])
-        check_constraints(model)
+    print("\nПодбор расхода по заданному значению")
+    print(f"Цель: {problem['objective']['parameter']} = {problem['objective']['value']}")
+    print(f"G = {solution['variable']['value']:.6f} м³/мин (273 К, P0)")
+    print(f"Итераций = {solution['iterations']}")
+    print_result(solution["result"]["outputs"])
+    checks = check_constraints(solution["result"], problem)
+    if any(value is not None for value in problem["constraints"].values()):
+        print("Ограничения выполнены" if checks["valid"] else "Нарушения: " + "; ".join(checks["violations"]))
+    else:
+        print("Ограничения не заданы. Выполнен только подбор по целевому значению.")
     # programm_menu()
 if __name__ == "__main__":
     main()
