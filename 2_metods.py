@@ -1,4 +1,4 @@
-"""Dry air flushing: M1/M2/M3 with numerical quality controls, 2026-10-29.
+"""Dry air flushing: M1/M2/M3 with numerical controls and force budgets, 2026-10-31.
 One file, stdlib. Stationary M3 section and conditional full-loop solver.
 Scientific validation remains explicitly separate from numerical verification.
 M1: AIR, Gorshkov/Klimov/Kozlov/Yakovlev, Leningrad Mining Institute 1990,
@@ -594,14 +594,22 @@ def number(raw):
 
 def main():
     data=default_data();flow=None
-    print('СУХАЯ ПРОДУВКА: М1 AIR, М2 Guo и М3 v1.2. Все вычисления в одном файле.')
+    print('СУХАЯ ПРОДУВКА: М1 AIR, М2 Guo и М3 v1.3. Все вычисления в одном файле.')
     while True:
         print('\n1. Исходные данные\n2. Изменить параметр\n3. Общий расход\n4. Сравнить модели\n'
               '5. Контроль книжного AIR\n6. Сохранить исходные данные\n7. Загрузить исходные данные\n'
-              '8. Экспорт расчёта JSON\n9. Исследование 27 случаев CSV\n10. Встроенные проверки\n11. Сходимость уравнений при kr=1\n12. Подбор расхода по цели\n13. Сканирование расхода CSV\n14. Прямой анализ расчётов\n15. Сохранить анализ (HTML, JSON, CSV)\n16. Анализ диапазона расхода\n17. М3: раздельные скорости газа и шлама\n18. Сравнение М1/М2/М3 на отдельных участках\n19. Аудит нормировки трения М3\n20. М3: весь контур, паспорт, анализ и экспорт\n21. М3: экспериментальные контроли и неопределённость\n22. Контроль численной точности М3\n0. Выход')
+              '8. Экспорт расчёта JSON\n9. Исследование 27 случаев CSV\n10. Встроенные проверки\n11. Сходимость уравнений при kr=1\n12. Подбор расхода по цели\n13. Сканирование расхода CSV\n14. Прямой анализ расчётов\n15. Сохранить анализ (HTML, JSON, CSV)\n16. Анализ диапазона расхода\n17. М3: раздельные скорости газа и шлама\n18. Сравнение М1/М2/М3 на отдельных участках\n19. Аудит нормировки трения М3\n20. М3: весь контур, паспорт, анализ и экспорт\n21. М3: экспериментальные контроли и неопределённость\n22. Контроль численной точности М3\n23. М3: вклад сил и влияние размера частиц\n24. Единый JSON для расчётов, ML и 3D\n25. ML: эмулятор давления М3 на основе М1\n26. Локальный опыт: М1/М2/М3 и измерения\n0. Выход')
         try:
             choice=input('Пункт: ').strip()
             if choice=='0':return
+            if choice=='26':
+                nf_local_menu();continue
+            if choice=='25':
+                ml_pressure_menu(data,flow);continue
+            if choice=='24':
+                exchange_menu(data,flow);continue
+            if choice=='23':
+                m3_particle_study_menu(data,flow);continue
             if choice=='22':
                 m3_numerical_quality_menu(data,flow);continue
             if choice=='21':
@@ -1009,7 +1017,7 @@ def m3_pressure_tolerance(rtol,pressure):
     return max(1e-4,pressure*max(5e-12,.02*rtol))
 
 M3_SCOPE = (
-    'М3 v1.2: стационарная сухая вертикальная двухскоростная модель; '
+    'М3 v1.3: стационарная сухая вертикальная двухскоростная модель; '
     'раздельные скорости газа и частиц, ускорение обеих фаз. '
     'Участки и контур с заданными перепадами на стыках. '
     'Это стационарная адаптация уравнений Adeleke, не его нестационарный код.'
@@ -1174,7 +1182,7 @@ def m3_local(case, pressure, solids_velocity):
     yang_bulk: Fws = 2*f_F*alpha*rho_s*us**2/Dh. DOI10.1002/aic.690240326;
     DOE/MC/21023-2825 Vol.3 (1989), Appendix C pp.C-5,C-6,C-167:
     dFf=f_p*us**2/(2D)*dMs; dMs=alpha*rho_s*A*dz; f_p=4*f_F.
-    DOE C-7 Eq16 explicitly includes alpha and states f_p=4*f_F.
+    DOE C-6 Eqs8-9 give both branches; C-7 Eq16 includes alpha and f_p=4*f_F.
     Adeleke Eq3.12 prints rho without an index. His actual code is unavailable.
     legacy_intrinsic reproduces our earlier unsupported normalization ONLY.
     """
@@ -1874,12 +1882,12 @@ class Verification(Verification):
 
 # M3 v1.0 completion: coupled sections, explicit interface data and diagnostics.
 # Public interface contracts use SI and ABSOLUTE pressure throughout.
-M3_VERSION='1.2-numerical-quality'
+M3_VERSION='1.3-controls-and-budgets'
 M3_SOURCE_RECORDS=[
  dict(name='Adeleke, 2015, PhD thesis',url='https://etda.libraries.psu.edu/catalog/26245',
       evidence='Chapter 3 balances and closures; Chapter 5 Temple geometry and FCC minima. Stationary reduction implemented here; no claim of Roe/WENO reproduction.'),
  dict(name='Robertson et al., DOE/MC/21023-2825 Vol.III, 1989',url='https://www.osti.gov/servlets/purl/6955584',
-      evidence='Appendix C: C-5 Eq6, C-6 Eqs10-11, C-7 Eq16 and fp=4fs; C-167 velocities. Low branch is an optional Yang extension, not Adeleke Eq3.16.'),
+      evidence='Appendix C: C-5 Eq6, C-6 Eqs8-9, C-7 Eq16 and fp=4fs; C-167 velocities. Low branch is an optional Yang extension, not Adeleke Eq3.16.'),
  dict(name='Turton & Levenspiel, 1986',url='https://doi.org/10.1016/0032-5910(86)80012-2',
       evidence='Continuous sphere-drag correlation. The suspect 10**-5 switch printed in Adeleke is not adopted.'),
  dict(name='Haider & Levenspiel, 1989',url='https://doi.org/10.1016/0032-5910(89)80008-7',
@@ -1911,6 +1919,20 @@ def m3_profile_diagnostics(case,rows):
     result['force_integrals_pa_trapezoidal']=integrals
     result['gas_momentum_balance_quadrature_residual_pa']=gas_momentum_change+integrals['gas_wall_N_m3']+integrals['gas_weight_N_m3']+integrals['drag_N_m3']
     result['solids_momentum_balance_quadrature_residual_pa']=solid_momentum_change-integrals['drag_N_m3']+integrals['solids_wall_N_m3']+integrals['solids_weight_N_m3']
+    # Eliminate internal drag using the solid balance. These are contributions
+    # to section pressure drop, not separate contributions to surface pressure.
+    # Their sum differs from measured endpoint drop by BOTH quadrature residuals.
+    contributions=dict(gas_wall=integrals['gas_wall_N_m3'],
+        solids_wall=integrals['solids_wall_N_m3'],gas_weight=integrals['gas_weight_N_m3'],
+        solids_weight=integrals['solids_weight_N_m3'],
+        gas_acceleration=jg*(last['gas_velocity_m_s']-first['gas_velocity_m_s']),
+        solids_acceleration=js*(last['solids_velocity_m_s']-first['solids_velocity_m_s']),
+        solids_stress=(last['solids_modulus_pa']-first['solids_modulus_pa'])/(8.76*math.log(10)))
+    drop=first['pressure_pa']-last['pressure_pa']
+    result['pressure_drop_budget']=dict(contributions_pa=contributions,
+        endpoint_drop_pa=drop,sum_contributions_pa=sum(contributions.values()),
+        quadrature_residual_pa=sum(contributions.values())-drop,
+        interpretation='Integrated steady balances; internal drag cancels. Trapezoidal quadrature residual retained, no fitted pressure.')
     result['quadrature_note']='Остаток включает погрешность трапеций на сохранённой адаптивной сетке; это не давление подгонки.'
     return result
 
@@ -2007,7 +2029,7 @@ def m3_gas_supply_section(bottom_pressure,case,rtol=1e-8):
     Acceleration retained; Chen only, no particles, no use of M1/M2 result.
     """
     if case.solids_mass_kg_s:raise ValueError('В нисходящем канале М3 допускается только чистый газ.')
-    if not 0<rtol<.01 or not math.isfinite(bottom_pressure) or bottom_pressure<=0:raise ValueError('Неверное давление или допуск.')
+    if not 0<rtol<=.01 or not math.isfinite(bottom_pressure) or bottom_pressure<=0:raise ValueError('Неверное давление или допуск.')
     def rhs(p):
         st=m3_local(case,p,case.inlet_solids_velocity_m_s)
         return (-st['gas_weight_N_m3']+st['gas_wall_N_m3'])/st['isothermal_sonic_margin']
@@ -2032,7 +2054,7 @@ def m3_gas_supply_section(bottom_pressure,case,rtol=1e-8):
         rows.append(dict(z_m=z,**m3_local(case,p,case.inlet_solids_velocity_m_s)))
         h*=min(2.,max(.25,.9*max(err,1e-12)**-.2));h=min(h,case.length_m/40)
     return dict(name=case.name,case=asdict(case),bottom_pressure_pa=bottom_pressure,top_pressure_pa=p,rows=rows,
-                steps=n,rejected_steps=rejected,direction='gas_down_profile_coordinate_up')
+                steps=n,rejected_steps=rejected,rtol=rtol,direction='gas_down_profile_coordinate_up')
 
 
 def m3_full_circuit(data,flow,extra,rtol=M3_DEFAULT_RTOL):
@@ -2107,7 +2129,7 @@ def m3_full_circuit(data,flow,extra,rtol=M3_DEFAULT_RTOL):
     for c,key,offset in [(answer['narrow_case'],'narrow',0.),(answer['wide_case'],'wide',Ln)]:
         part=answer[key]
         return_sections.append(dict(name=c.name,case=asdict(c),bottom_pressure_pa=part['rows'][0]['pressure_pa'],top_pressure_pa=part['rows'][-1]['pressure_pa'],
-            diagnostics=m3_profile_diagnostics(c,part['rows']),rows=part['rows'],steps=part['steps']))
+            diagnostics=m3_profile_diagnostics(c,part['rows']),rows=part['rows'],steps=part['steps'],rtol=rtol))
         profile.extend(dict(section=key,distance_from_bottom_m=r['z_m']+offset,**r) for r in part['rows'])
     before=answer['narrow']['rows'][-1];after=answer['wide']['rows'][0]
     transition=dict(pressure_before_pa=before['pressure_pa'],pressure_after_pa=after['pressure_pa'],
@@ -2133,7 +2155,7 @@ def m3_full_circuit(data,flow,extra,rtol=M3_DEFAULT_RTOL):
         else:jump=0.
         p+=jump
         supply_jumps.append(jump)
-        part=m3_gas_supply_section(p,c);supply.append(part);p=part['top_pressure_pa']
+        part=m3_gas_supply_section(p,c,rtol=rtol);supply.append(part);p=part['top_pressure_pa']
     supply_start=hi+extra.bit_pressure_drop_pa
     common_pressure_chain=[dict(name='Возврат вокруг бурильной трубы',increment_pa=after['pressure_pa']-d['ATM_PRSSR_P0']),
         dict(name='Обратный проход перехода',increment_pa=-recovery),
@@ -2154,7 +2176,7 @@ def m3_full_circuit(data,flow,extra,rtol=M3_DEFAULT_RTOL):
         return_sections=return_sections,supply_sections=supply,return_profile=profile,transition=transition,
         pressure_budget=common_pressure_chain,pressure_budget_closure_pa=closure,
         outlet_residual_pa=answer['residual'],gas_mass_relative_error=mass_g,solids_mass_relative_error=mass_s,
-        shooting_iterations=iteration+1,shooting_method='Illinois_with_bisection_safeguards',shooting_bracket_width_pa=root['bracket_width_pa'],numerical_tolerances=dict(rtol=rtol,pressure_boundary_pa=pressure_tol),minimum_radial_clearance_m=gap,
+        shooting_iterations=iteration+1,shooting_method='Illinois_with_bisection_safeguards',shooting_bracket_width_pa=root['bracket_width_pa'],numerical_tolerances=dict(rtol=rtol,return_rtol=rtol,supply_rtol=rtol,pressure_boundary_pa=pressure_tol),minimum_radial_clearance_m=gap,
         particle_to_clearance_ratio=extra.particle_diameter_m/gap,maximum_particle_to_clearance_ratio=extra.maximum_particle_diameter_m/gap,
         physical_validation=False,author_example_reproduced=False,
         validation_status='conditional_stationary_solution; numerical_verification_separate_from_physical_validation',
@@ -2224,7 +2246,7 @@ def m3_input_passport(data):
 def m3_full_menu(data,flow):
     extra=None;last=None
     while True:
-        print('\nМ3 v1.2: весь стационарный контур. Дополнительный паспорт хранится отдельно от общих данных.')
+        print('\nМ3 '+M3_VERSION+': весь стационарный контур. Дополнительный паспорт хранится отдельно от общих данных.')
         print('1. Ввести дополнительные данные\n2. Показать данные\n3. Рассчитать весь контур\n4. Иллюстрация с ЯВНЫМИ предположениями\n5. Сохранить дополнительный паспорт\n6. Загрузить дополнительный паспорт\n7. Экспорт результата и профиля\n8. Опубликованные контрольные числа и статус\n9. Сравнить весь контур М1/М2/М3 на одинаковых условиях\n10. Анализ диапазона расхода\n0. Назад')
         try:
             key=input('Пункт М3: ').strip()
@@ -2256,6 +2278,11 @@ def m3_full_menu(data,flow):
                 for row in compared['rows']:
                     if row.get('status')=='rejected':print(row['model']+': '+row['reason'])
                     else:print('%s | %.7f | %.7f | %.7f'%(row['model'],row['return_bottom_pressure_pa']/1e6,row['surface_supply_pressure_pa']/1e6,row['receiver_pressure_pa']/1e6))
+                controls=compared['friction_formulation_controls']
+                if controls:
+                    print('Диагностические варианты при одинаковом трении, давление подачи МПа:')
+                    print('М1/Weymouth %.9f; М2/Weymouth %.9f; М1/Chen %.9f; М2/Chen %.9f.'%tuple(controls[k]/1e6 for k in ('M1_Weymouth_pa','M2_Weymouth_pa','M1_Chen_pa','M2_Chen_pa')))
+                    print('М1/Chen и варианты М2 с общим трением являются исследовательскими адаптациями.')
                 last=compared['M3']
                 path=unique_output(Path(__file__).resolve().parent,'three_models_full_comparison','json')
                 path.write_text(json.dumps(compared,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8');print('Сохранено: '+str(path))
@@ -2351,7 +2378,7 @@ def m3_controlled_homogeneous(data,flow,extra,model):
     Model names state whether a shared Chen diagnostic replaces native friction.
     All connectors use the SAME input total K, spread over the actual pipe length.
     """
-    if model not in ('M1_AIR','M2_Nikuradse','M2_shared_Chen','M2_shared_Weymouth'):raise ValueError('Неизвестная модель сравнения.')
+    if model not in ('M1_AIR','M1_shared_Chen','M2_Nikuradse','M2_shared_Chen','M2_shared_Weymouth'):raise ValueError('Неизвестная модель сравнения.')
     d,gas,q,mg,ms,_=project_common(data,flow)
     if d['source_literal_mode'] or d['geometry_mode']!=1 or d['up_formula_variant']!=1 or abs(d['drilling_angle_alfa']-90)>1e-9:
         raise ValueError('Сравнение требует общего вертикального паспорта и варианта AIR=1.')
@@ -2376,7 +2403,7 @@ def m3_controlled_homogeneous(data,flow,extra,model):
         else:f=4*m3_fanning(mg*c.hydraulic_diameter_m/(c.area_m2*extra.viscosity_pa_s),rough/c.hydraulic_diameter_m)
         ksum=extra.connection_total_K if c.name=='inside_drill_pipe' else 0.
         start=p
-        if model=='M1_AIR':
+        if model in ('M1_AIR','M1_shared_Chen'):
             n=int(d['air_substeps']);L=c.length_m/n
             a=mg**2*gas.R*d['well_temp_t']/(c.hydraulic_diameter_m*c.area_m2**2)
             for _ in range(n):
@@ -2417,7 +2444,18 @@ def m3_compare_full(data,flow,extra,m3_result=None):
         decomposition=dict(M1_minus_M3_pa=a-e,M1_minus_M2_same_Weymouth_pa=a-b,
             M2_Weymouth_minus_M2_Chen_pa=b-c,M2_Chen_minus_M3_pa=c-e,
             note='Exact additive path through controlled variants; separates pressure/mass-loading formulation, gas wall law, and two-velocity plus acceleration changes. No fitted coefficient.')
+    controls=None
+    if decomposition is not None:
+        m1_chen=m3_controlled_homogeneous(data,flow,extra,'M1_shared_Chen')
+        a=details['M1_AIR']['surface_supply_pressure_pa'];b=shared_weymouth['surface_supply_pressure_pa']
+        c=m1_chen['surface_supply_pressure_pa'];e=details['M2_shared_Chen']['surface_supply_pressure_pa']
+        controls=dict(M1_Weymouth_pa=a,M1_Chen_pa=c,M2_Weymouth_pa=b,M2_Chen_pa=e,
+            M1_minus_M2_at_Weymouth_pa=a-b,M1_minus_M2_at_Chen_pa=c-e,
+            Weymouth_minus_Chen_at_M1_pa=a-c,Weymouth_minus_Chen_at_M2_pa=b-e,
+            interaction_pa=(a-b)-(c-e),
+            note='2x2 controlled adaptations of pressure formulation and gas wall law. M1_Chen and shared M2 variants are diagnostics, not author examples. Default M1 discretization and kr remain fixed.')
     return dict(rows=rows,homogeneous_details=details,M3=result,decomposition=decomposition,M2_shared_Weymouth=shared_weymouth,
+        friction_formulation_controls=controls,
         comparability='Same geometry, phase mass rates, temperature, outlet p, prescribed interface jumps and connector total K. Native phase and wall closures remain different.',
         notes=['M2_shared_Chen is a controlled diagnostic adaptation, not the author Guo friction law.',
         'M1/M2 remain homogeneous; M3 has independent velocities and phase acceleration.',
@@ -2622,6 +2660,20 @@ def m3_parameter_probe(data,flow,extra,target,value):
     return d,flow,x
 
 
+def m3_scale_particle_sizes(extra,representative_diameter_m):
+    """Explicit sensitivity scenario: scale BOTH sizes, preserving max/mean.
+
+    Independent interval inputs still use strict m3_parameter_probe/map. This
+    does not replace a measured size distribution or silently repair a passport.
+    """
+    if isinstance(extra,dict):extra=M3Passport(**extra)
+    require_finite(representative_diameter_m)
+    if representative_diameter_m<=0:raise ValueError('Положительный размер частиц обязателен.')
+    maximum=representative_diameter_m*(extra.maximum_particle_diameter_m/extra.particle_diameter_m)
+    return replace(extra,particle_diameter_m=representative_diameter_m,
+                   maximum_particle_diameter_m=maximum)
+
+
 def m3_sensitivity_specs(data,flow,extra):
     d,_,q,_,_,_=project_common(data,flow);gap=(d['brhl_diam_D']-d['out_diam_core_pipe_dh'])/2
     specs=[]
@@ -2630,6 +2682,10 @@ def m3_sensitivity_specs(data,flow,extra):
         value=getattr(extra,key)
         if value>0:specs.append(dict(parameter=key,base=value,levels=[.9*value,1.1*value],
             interpretation='local finite perturbation +/-10%; numerical sensitivity step, NOT a measured uncertainty bound'))
+    for spec in specs:
+        if spec['parameter']=='particle_diameter_m':
+            spec.update(coupled_parameters=['particle_diameter_m','maximum_particle_diameter_m'],
+                interpretation='Scale both diameters +/-10% at fixed maximum/representative ratio; explicit size scenario, NOT measured uncertainty')
     specs.append(dict(parameter='radial_clearance_m',base=gap,levels=[.95*gap,1.05*gap],
         interpretation='local geometric perturbation +/-5%; NOT a manufacturing tolerance'))
     specs.append(dict(parameter='Q_reference_m3_min',base=q,levels=[.95*q,1.05*q],
@@ -2651,7 +2707,9 @@ def m3_sensitivity_screen(data,flow,extra,rtol=2e-7,progress=False):
             if value==spec['base']:r=base
             else:
                 try:
-                    dd,qq,xx=m3_parameter_probe(d,q,extra,spec['parameter'],value)
+                    if spec['parameter']=='particle_diameter_m':
+                        dd,qq,xx=dict(d),q,m3_scale_particle_sizes(extra,value)
+                    else:dd,qq,xx=m3_parameter_probe(d,q,extra,spec['parameter'],value)
                     r=m3_full_circuit(dd,qq,xx,rtol)
                 except (ValueError,ArithmeticError) as exc:
                     values.append(dict(value=value,status='rejected',reason=str(exc)));continue
@@ -3011,15 +3069,22 @@ def m3_numerical_quality(data,flow,extra,levels=(2e-6,2e-7,2e-8),target_change_p
         row=dict(rtol=rtol,surface_supply_pressure_pa=r['surface_supply_pressure_pa'],
             return_bottom_pressure_pa=r['return_bottom_pressure_pa'],outlet_residual_pa=r['outlet_residual_pa'],
             pressure_boundary_tolerance_pa=r['numerical_tolerances']['pressure_boundary_pa'],
+            return_rtol=r['numerical_tolerances']['return_rtol'],
+            supply_rtol=r['numerical_tolerances']['supply_rtol'],
             return_steps=sum(p['steps'] for p in r['return_sections']),supply_steps=sum(p['steps'] for p in r['supply_sections']),
             gas_mass_relative_error=r['gas_mass_relative_error'],solids_mass_relative_error=r['solids_mass_relative_error'])
         if rows:
             row['supply_change_from_previous_pa']=row['surface_supply_pressure_pa']-rows[-1]['surface_supply_pressure_pa']
             row['bottom_change_from_previous_pa']=row['return_bottom_pressure_pa']-rows[-1]['return_bottom_pressure_pa']
         rows.append(row)
+    supply_ok=abs(rows[-1]['supply_change_from_previous_pa'])<=target_change_pa
+    bottom_ok=abs(rows[-1]['bottom_change_from_previous_pa'])<=target_change_pa
     return dict(model='M3 '+M3_VERSION,rows=rows,inputs=r['inputs'],additional_inputs=r['additional_inputs'],
         Q_reference_m3_min=r['Q_reference_m3_min'],target_change_pa=target_change_pa,
-        observed_final_change_below_target=abs(rows[-1]['supply_change_from_previous_pa'])<=target_change_pa,
+        observed_supply_final_change_below_target=supply_ok,
+        observed_bottom_final_change_below_target=bottom_ok,
+        observed_final_change_below_target=supply_ok and bottom_ok,
+        aggregate_check='Both surface supply and return-bottom final changes must be below the target.',
         physical_validation=False,confidence_level=None,certified_error_bound=False,
         note='Разность последних двух численных решений при неизменных уравнениях и входах. Это не оценка экспериментальной точности, не 95%-ный интервал и не доказанная верхняя граница ошибки.')
 
@@ -3036,11 +3101,15 @@ def m3_numerical_quality_menu(data,flow):
     else:raise ValueError('Выберите 0, 1 или 2.')
     print('Статус входов: '+extra.data_status)
     r=m3_numerical_quality(data,flow,extra,progress=True)
-    print('rtol | Давление подачи, Па абс. | Изменение, Па | Невязка выхода, Па')
+    print('rtol возврата/подачи | Подача, Па абс. | Изменение, Па | Забой возврата, Па | Изменение, Па')
     for row in r['rows']:
         change=row.get('supply_change_from_previous_pa')
-        print('%.3g | %.6f | %s | %.6g'%(row['rtol'],row['surface_supply_pressure_pa'],
-            'первое решение' if change is None else '%+.6f'%change,row['outlet_residual_pa']))
+        bottom=row.get('bottom_change_from_previous_pa')
+        print('%.3g/%.3g | %.6f | %s | %.6f | %s'%(row['return_rtol'],row['supply_rtol'],row['surface_supply_pressure_pa'],
+            'первое решение' if change is None else '%+.6f'%change,row['return_bottom_pressure_pa'],
+            'первое решение' if bottom is None else '%+.6f'%bottom))
+    print('Последнее изменение <= %.6g Па: подача %s; забой %s; оба %s.'%(r['target_change_pa'],
+        r['observed_supply_final_change_below_target'],r['observed_bottom_final_change_below_target'],r['observed_final_change_below_target']))
     print(r['note'])
     path=unique_output(Path(__file__).resolve().parent,'numerical_quality','json')
     path.write_text(json.dumps(r,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
@@ -3104,6 +3173,751 @@ class Verification(Verification):
         self.assertLess(abs(r['result']['residual']),1e-9)
         self.assertLess(len(seen),35)
         with self.assertRaises(M3DomainError):m3_shoot_root(evaluate,1.,1.1,1e-9)
+
+M3_BUDGET_LABELS=dict(gas_wall='Трение газа',solids_wall='Трение частиц',
+    gas_weight='Тяжесть газа',solids_weight='Тяжесть частиц',gas_acceleration='Ускорение газа',
+    solids_acceleration='Ускорение частиц',solids_stress='Напряжения твёрдой фазы',
+    prescribed_interface_drop='Заданный скачок на переходе')
+
+
+def m3_return_force_budget(result):
+    """Return-path pressure drop only; surface supply is a different output.
+
+    Eliminate interphase drag rather than counting it twice. Interface pressure
+    recovery is prescribed, not predicted. Keep sampled quadrature residuals.
+    """
+    sections=[];totals={}
+    for part in result['return_sections']:
+        budget=part['diagnostics']['pressure_drop_budget']
+        sections.append(dict(name=part['name'],**budget))
+        for key,value in budget['contributions_pa'].items():totals[key]=totals.get(key,0.)+value
+    totals['prescribed_interface_drop']=-result['transition']['prescribed_recovery_pa']
+    drop=result['return_bottom_pressure_pa']-result['outlet_pressure_pa']
+    return dict(sections=sections,contributions_pa=totals,endpoint_drop_pa=drop,
+        sum_contributions_pa=sum(totals.values()),quadrature_residual_pa=sum(totals.values())-drop,
+        physical_validation=False,
+        note='Return pressure drop, not a decomposition of surface supply pressure. Internal drag cancels between phase balances; quadrature error is explicit.')
+
+
+def m3_particle_size_study(data,flow,extra,diameters_m=None,rtol=M3_DEFAULT_RTOL,progress=False):
+    """Controlled diameter sweep. Failed cases have no pressure prediction.
+
+    Keep phase mass rates and max/representative size ratio fixed. Frozen-state
+    probes at the baseline wide-section inlet isolate closure changes from the
+    response of the solved pressure and velocity profiles. No coefficients fit.
+    """
+    if isinstance(extra,dict):extra=M3Passport(**extra)
+    d,_,q,mg,ms,_=project_common(data,flow)
+    if ms<=0:raise ValueError('Для исследования размера нужна положительная подача шлама.')
+    if diameters_m is None:diameters_m=[extra.particle_diameter_m*f for f in (.8,.9,1.,1.1,1.2)]
+    diameters_m=list(diameters_m)
+    if not 1<=len(diameters_m)<=31:raise ValueError('Нужно от 1 до 31 значения размера.')
+    for dp in diameters_m:
+        require_finite(dp)
+        if dp<=0:raise ValueError('Размеры должны быть положительными.')
+    baseline=m3_full_circuit(d,q,extra,rtol)
+    part=baseline['return_sections'][-1];case=M3Case(**part['case']);state0=part['rows'][0]
+    rows=[]
+    for i,dp in enumerate(diameters_m,1):
+        scaled=m3_scale_particle_sizes(extra,dp)
+        row=dict(particle_diameter_m=dp,maximum_particle_diameter_m=scaled.maximum_particle_diameter_m)
+        try:
+            result=baseline if dp==extra.particle_diameter_m else m3_full_circuit(d,q,scaled,rtol)
+            probe=m3_local(replace(case,particle_diameter_m=dp),state0['pressure_pa'],state0['solids_velocity_m_s'])
+            row.update(status='computed',surface_supply_pressure_pa=result['surface_supply_pressure_pa'],
+                return_bottom_pressure_pa=result['return_bottom_pressure_pa'],
+                supply_change_pa=result['surface_supply_pressure_pa']-baseline['surface_supply_pressure_pa'],
+                return_force_budget=m3_return_force_budget(result),
+                fixed_state_probe={key:probe[key] for key in ('terminal_velocity_m_s','solids_fanning',
+                    'solids_wall_N_m3','drag_N_m3','gas_to_terminal_ratio','yang_branch')},
+                gas_to_terminal_ratio_min=min(p['diagnostics']['gas_to_terminal_ratio_min'] for p in result['return_sections']))
+        except (ValueError,ArithmeticError) as exc:row.update(status='rejected',reason=str(exc))
+        rows.append(row)
+        if progress:print('Размер %d/%d: %.6g мм; %s'%(i,len(diameters_m),dp*1000,row['status']))
+    return dict(model='M3 '+M3_VERSION,inputs=d,additional_inputs=asdict(extra),
+        Q_reference_m3_min=q,mass_gas_kg_s=mg,mass_solids_kg_s=ms,rtol=rtol,
+        size_rule='Scale representative and maximum diameter together at a fixed ratio.',
+        baseline_supply_pressure_pa=baseline['surface_supply_pressure_pa'],rows=rows,
+        baseline_force_budget=m3_return_force_budget(baseline),
+        fixed_state=dict(section=part['name'],pressure_pa=state0['pressure_pa'],
+            solids_velocity_m_s=state0['solids_velocity_m_s'],scope='Local closure probe only, not a second boundary-value solution.'),
+        physical_validation=False,coefficient_fitting=False,
+        note='Size dependence is a prediction of the selected closures. It is not an experimental law or evidence of applicability to a 2 mm annular clearance.')
+
+
+def m3_particle_study_menu(data,flow):
+    print('М3: вклад сил и влияние размера частиц при общем расходе.')
+    print('1. Иллюстративный паспорт\n2. Загрузить дополнительный паспорт JSON\n0. Назад')
+    key=input('Пункт: ').strip()
+    if key=='0':return
+    if key=='1':extra=m3_example_passport(data)
+    elif key=='2':
+        payload=json.loads(Path(input('JSON-файл: ').strip().strip(chr(34))).read_text(encoding='utf-8-sig'))
+        extra=M3Passport(**payload['additional_inputs'])
+    else:raise ValueError('Выберите 0, 1 или 2.')
+    print('Дополнительные данные: '+extra.data_status)
+    print('Средний и максимальный диаметры изменяются вместе при неизменном их отношении.')
+    raw=input('Диаметры, мм, через ; [0.8;0.9;1;1.1;1.2 от исходного]: ').strip()
+    sizes=None if not raw else [number(v)*.001 for v in raw.split(';')]
+    study=m3_particle_size_study(data,flow,extra,sizes,progress=True)
+    print('Диаметр, мм | Подача, МПа абс. | Изменение, Па')
+    for row in study['rows']:
+        if row['status']=='computed':print('%.6g | %.9f | %+.6f'%(row['particle_diameter_m']*1000,row['surface_supply_pressure_pa']/1e6,row['supply_change_pa']))
+        else:print('%.6g | отклонён: %s'%(row['particle_diameter_m']*1000,row['reason']))
+    print('Состав перепада давления возврата, кПа (внутренняя межфазная сила исключена):')
+    for key,value in study['baseline_force_budget']['contributions_pa'].items():print('%s: %+.6f'%(M3_BUDGET_LABELS[key],value/1000))
+    print('Остаток квадратуры: %.6g Па.'%study['baseline_force_budget']['quadrature_residual_pa'])
+    print(study['note'])
+    path=unique_output(Path(__file__).resolve().parent,'m3_particle_size_study','json')
+    path.write_text(json.dumps(study,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
+    print('Сохранено: '+str(path))
+
+
+class Verification(Verification):
+    def test_sensitivity_screen_uses_explicit_coupled_size_rule(self):
+        from unittest.mock import patch
+        d=default_data();x=m3_example_passport(d);seen=[]
+        def fake(_d,_q,_x,*_args):
+            seen.append(_x);return dict(surface_supply_pressure_pa=1e5+_x.particle_diameter_m)
+        spec=next(s for s in m3_sensitivity_specs(d,None,x) if s['parameter']=='particle_diameter_m')
+        with patch.dict(globals(),{'m3_full_circuit':fake,'m3_sensitivity_specs':lambda *_:[spec]}):
+            r=m3_sensitivity_screen(d,None,x)
+        self.assertEqual(len(seen),3)
+        self.assertTrue(all(z['status']=='computed' for z in r['rows'][0]['results']))
+        self.assertAlmostEqual(seen[-1].particle_diameter_m,x.particle_diameter_m*1.1)
+        self.assertEqual(seen[-1].particle_diameter_m,seen[-1].maximum_particle_diameter_m)
+        self.assertIn('maximum_particle_diameter_m',r['rows'][0]['coupled_parameters'])
+
+    def test_controlled_formulations_use_the_same_chen_friction(self):
+        d=default_data();x=m3_example_passport(d)
+        a=m3_controlled_homogeneous(d,None,x,'M1_shared_Chen')
+        b=m3_controlled_homogeneous(d,None,x,'M2_shared_Chen')
+        self.assertGreater(a['surface_supply_pressure_pa'],0.)
+        self.assertEqual([p['friction_darcy'] for p in a['sections']],[p['friction_darcy'] for p in b['sections']])
+        self.assertEqual([p['connection_K'] for p in a['sections']],[p['connection_K'] for p in b['sections']])
+
+    def test_full_circuit_passes_requested_tolerance_to_supply(self):
+        from unittest.mock import patch
+        original=m3_gas_supply_section;seen=[]
+        def traced(*args,**kwargs):
+            seen.append(kwargs.get('rtol'));return original(*args,**kwargs)
+        d=dict(default_data(),dpth_h=3.,core_pipe_lngth_lk=.1);tol=7e-6
+        with patch.dict(globals(),{'m3_gas_supply_section':traced}):r=m3_full_circuit(d,None,m3_example_passport(d),tol)
+        self.assertEqual(seen,[tol]*len(r['supply_sections']))
+        self.assertEqual(r['numerical_tolerances']['supply_rtol'],tol)
+        self.assertTrue(all(p['rtol']==tol for p in r['return_sections']+r['supply_sections']))
+
+    def test_refinement_requires_both_pressure_changes(self):
+        from unittest.mock import patch
+        d=default_data();extra=m3_example_passport(d)
+        def fake(_d,_q,_x,tol):
+            return dict(surface_supply_pressure_pa=10.+tol,return_bottom_pressure_pa=10.+1e7*tol,
+                outlet_residual_pa=0.,numerical_tolerances=dict(pressure_boundary_pa=.001,return_rtol=tol,supply_rtol=tol),
+                return_sections=[dict(steps=1)],supply_sections=[dict(steps=1)],gas_mass_relative_error=0.,
+                solids_mass_relative_error=0.,inputs=d,additional_inputs=asdict(extra),Q_reference_m3_min=1.)
+        with patch.dict(globals(),{'m3_full_circuit':fake}):r=m3_numerical_quality(d,None,extra,levels=(2e-6,2e-7))
+        self.assertTrue(r['observed_supply_final_change_below_target'])
+        self.assertFalse(r['observed_bottom_final_change_below_target'])
+        self.assertFalse(r['observed_final_change_below_target'])
+
+    def test_coupled_size_scenario_preserves_ratio_and_independent_inputs_stay_strict(self):
+        x=replace(m3_example_passport(default_data()),maximum_particle_diameter_m=.001)
+        y=m3_scale_particle_sizes(x,x.particle_diameter_m*1.1)
+        self.assertAlmostEqual(y.maximum_particle_diameter_m,.0011)
+        self.assertAlmostEqual(y.maximum_particle_diameter_m/y.particle_diameter_m,x.maximum_particle_diameter_m/x.particle_diameter_m)
+        self.assertEqual(x.maximum_particle_diameter_m,.001)
+        with self.assertRaises(ValueError):m3_scale_particle_sizes(x,0.)
+        with self.assertRaises(ValueError):m3_parameter_probe(default_data(),None,x,'particle_diameter_m',.002)
+
+    def test_force_budget_cancels_internal_drag_and_retains_quadrature_residual(self):
+        # Synthetic endpoints and constant forces independently prescribe each
+        # impulse; the diagnostic must not add drag as another external force.
+        c=m3_demo_case();rows=[]
+        for z,p,ug,us in [(0.,120000.,10.,2.),(2.,110000.,12.,3.)]:
+            rows.append(dict(z_m=z,pressure_pa=p,gas_velocity_m_s=ug,solids_velocity_m_s=us,
+                solids_volume_fraction=.01,gas_Re=5000.,particle_Re=100.,isothermal_sonic_margin=.9,
+                gas_to_terminal_ratio=2.,yang_branch='high',solids_modulus_pa=.1,
+                gas_wall_N_m3=100.,gas_weight_N_m3=2.,drag_N_m3=999.,solids_wall_N_m3=20.,solids_weight_N_m3=3.))
+        diag=m3_profile_diagnostics(c,rows);b=diag['pressure_drop_budget'];parts=b['contributions_pa']
+        self.assertNotIn('drag',parts);self.assertEqual(parts['gas_wall'],200.);self.assertEqual(parts['solids_wall'],40.)
+        expected=250.+2*c.gas_mass_kg_s/c.area_m2+c.solids_mass_kg_s/c.area_m2
+        self.assertAlmostEqual(b['sum_contributions_pa'],expected)
+        self.assertAlmostEqual(b['quadrature_residual_pa'],expected-10000.)
+        self.assertAlmostEqual(b['quadrature_residual_pa'],diag['gas_momentum_balance_quadrature_residual_pa']+diag['solids_momentum_balance_quadrature_residual_pa'])
+
+    def test_particle_study_reports_invalid_size_without_fabricated_pressure(self):
+        d=dict(default_data(),dpth_h=3.,core_pipe_lngth_lk=.1);x=m3_example_passport(d)
+        r=m3_particle_size_study(d,None,x,[.003])
+        self.assertEqual(r['rows'][0]['status'],'rejected')
+        self.assertNotIn('surface_supply_pressure_pa',r['rows'][0])
+        self.assertFalse(r['physical_validation'])
+
+
+# Unified interchange: new application layer, unchanged hydraulic core.
+EXCHANGE_BASE_ORIGINS={'common:brhl_diam_D': {'baseline_value': 0.093, 'unit': 'м', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:dpth_h': {'baseline_value': 300, 'unit': 'м', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:drilling_angle_alfa': {'baseline_value': 90, 'unit': 'град к горизонту', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:out_diam_dril_pipe_d': {'baseline_value': 0.05, 'unit': 'м', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:in_diam_dril_pipe_d1': {'baseline_value': 0.039, 'unit': 'м', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:cnctn_type_j': {'baseline_value': 1, 'unit': 'код', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:diam_chnl_join_d3': {'baseline_value': 0.028, 'unit': 'м', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:pipe_lngth_lt': {'baseline_value': 4.5, 'unit': 'м', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:out_diam_core_pipe_dh': {'baseline_value': 0.089, 'unit': 'м', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:in_diam_core_pipe_db': {'baseline_value': 0.079, 'unit': 'м', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:core_pipe_lngth_lk': {'baseline_value': 5, 'unit': 'м', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:core_diam_dk': {'baseline_value': 0.073, 'unit': 'м', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:core_out_bk': {'baseline_value': 80, 'unit': '%', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:rock_density_ro': {'baseline_value': 2300, 'unit': 'кг/м3', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:mech_spd_vm': {'baseline_value': 6, 'unit': 'м/ч', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:tool_type_j1': {'baseline_value': 2, 'unit': 'код', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:gast_koef_kr': {'baseline_value': 1.2, 'unit': '1', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:coef_spd_unvnss_k': {'baseline_value': 1.2, 'unit': '1', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:coef_red_lift_frc_k1': {'baseline_value': 1.1, 'unit': '1', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:well_temp_t': {'baseline_value': 290, 'unit': 'К', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:rqrd_up_spd_v1': {'baseline_value': 12, 'unit': 'м/с', 'origin': 'literature_example', 'source': 'ЛГИ 1990, с.32-33, контрольный пример; не измерение нашей скважины'}, 'common:comprsr_effency_ni': {'baseline_value': 0.3, 'unit': '1', 'origin': 'assumed', 'source': 'Предположение проекта, не N0 книги'}, 'common:ATM_PRSSR_P0': {'baseline_value': 100000, 'unit': 'Па абс.', 'origin': 'literature_reference', 'source': 'ЛГИ 1990, с.27-28; идеализированная граница'}, 'common:GAS_CONST_R': {'baseline_value': 287, 'unit': 'Дж/(кг К)', 'origin': 'literature_reference', 'source': 'ЛГИ 1990, с.28'}, 'common:ACCLRTN_GRAV_g': {'baseline_value': 9.81, 'unit': 'м/с2', 'origin': 'literature_reference', 'source': 'ЛГИ 1990, с.28'}, 'common:AIR_ADBTC_INDX_k': {'baseline_value': 1.4, 'unit': '1', 'origin': 'assumed', 'source': 'Приближение идеального сухого воздуха, проектное значение'}, 'common:flow_reference_temperature_k': {'baseline_value': 273.0, 'unit': 'К', 'origin': 'literature_reference', 'source': 'ЛГИ 1990, с.27; в общем режиме используется 273 К'}, 'common:compressor_intake_temperature_k': {'baseline_value': 293.15, 'unit': 'К', 'origin': 'assumed', 'source': 'Предположение проекта'}, 'common:receiver_margin_pa': {'baseline_value': 50000.0, 'unit': 'Па', 'origin': 'literature_reference', 'source': 'ЛГИ 1990, с.30 и BASIC 540 на с.35'}, 'common:air_power_N0': {'baseline_value': 0.0, 'unit': 'кВт', 'origin': 'calculation_setting', 'source': 'Явно выбранный режим проекта, не измеряемый параметр'}, 'common:source_literal_mode': {'baseline_value': 0, 'unit': 'код', 'origin': 'calculation_setting', 'source': 'Явно выбранный режим проекта, не измеряемый параметр'}, 'common:up_formula_variant': {'baseline_value': 1, 'unit': 'код', 'origin': 'calculation_setting', 'source': 'Явно выбранный режим проекта, не измеряемый параметр'}, 'common:geometry_mode': {'baseline_value': 1, 'unit': 'код', 'origin': 'calculation_setting', 'source': 'Явно выбранный режим проекта, не измеряемый параметр'}, 'common:connection_count_override': {'baseline_value': 0.0, 'unit': 'число', 'origin': 'calculation_setting', 'source': 'Явно выбранный режим проекта, не измеряемый параметр'}, 'common:guo_friction_mode': {'baseline_value': 1, 'unit': 'код', 'origin': 'calculation_setting', 'source': 'Явно выбранный режим проекта, не измеряемый параметр'}, 'common:pipe_roughness_m': {'baseline_value': 4.572e-05, 'unit': 'м', 'origin': 'assumed', 'source': 'Сценарное значение; 0.0018 дюйма, Guo с.125; не измерено. Отдельные соединения уже учтены, перенос рекомендации требует проверки'}, 'common:borehole_roughness_m': {'baseline_value': 0.0001, 'unit': 'м', 'origin': 'assumed', 'source': 'Сценарное значение, не измерено'}, 'common:core_roughness_m': {'baseline_value': 0.0001, 'unit': 'м', 'origin': 'assumed', 'source': 'Сценарное значение, не измерено'}, 'common:air_substeps': {'baseline_value': 1, 'unit': 'число', 'origin': 'calculation_setting', 'source': 'Явно выбранный режим проекта, не измеряемый параметр'}, 'additional:particle_diameter_m': {'baseline_value': 0.0003465, 'unit': 'м', 'origin': 'assumed', 'source': 'Иллюстративный монодисперсный шлам, не измерено'}, 'additional:maximum_particle_diameter_m': {'baseline_value': 0.0003465, 'unit': 'м', 'origin': 'assumed', 'source': 'Принят равным представительному; используется для проверки зазора'}, 'additional:inlet_solids_velocity_m_s': {'baseline_value': 1.0, 'unit': 'м/с', 'origin': 'assumed', 'source': 'Назначено 1 м/с, не измерено'}, 'additional:viscosity_pa_s': {'baseline_value': 1.799107696889799e-05, 'unit': 'Па с', 'origin': 'derived', 'source': 'Формула Сазерленда при 290 К в friction_regime_check; T0=273, mu0=1.716e-5, S=111'}, 'additional:steel_roughness_m': {'baseline_value': 4.572e-05, 'unit': 'м', 'origin': 'assumed', 'source': 'То же сценарное значение, что pipe_roughness_m'}, 'additional:borehole_roughness_m': {'baseline_value': 0.0001, 'unit': 'м', 'origin': 'assumed', 'source': 'То же сценарное значение, что в М2'}, 'additional:core_roughness_m': {'baseline_value': 0.0001, 'unit': 'м', 'origin': 'assumed', 'source': 'То же сценарное значение, что в М2'}, 'additional:return_transition_pressure_recovery_pa': {'baseline_value': 0.0, 'unit': 'Па', 'origin': 'assumed', 'source': 'Задано 0, переменное сечение не рассчитывается непрерывно'}, 'additional:bit_pressure_drop_pa': {'baseline_value': 0.0, 'unit': 'Па', 'origin': 'assumed', 'source': 'Задано 0, не расчет реальной коронки'}, 'additional:core_interface_pressure_addition_pa': {'baseline_value': 0.0, 'unit': 'Па', 'origin': 'assumed', 'source': 'Задано 0'}, 'additional:barrel_pipe_interface_pressure_addition_pa': {'baseline_value': 0.0, 'unit': 'Па', 'origin': 'assumed', 'source': 'Задано 0'}, 'additional:connection_total_K': {'baseline_value': 117.82612279605716, 'unit': '1', 'origin': 'derived', 'source': '(H/lt)*a0*((di/dj)^2-1)^2; AIR с.29-30; распределено по длине трубы'}, 'additional:inlet_condition': {'baseline_value': 'specified_velocity', 'unit': 'код', 'origin': 'calculation_setting', 'source': 'specified_velocity, назначенная начальная скорость'}, 'additional:yang_regime': {'baseline_value': 'source_high_only', 'unit': 'код', 'origin': 'calculation_setting', 'source': 'source_high_only, только ug/Ut>1.5'}, 'additional:eccentricity_m': {'baseline_value': 0.0, 'unit': 'м', 'origin': 'assumed', 'source': '0, концентрическая геометрия'}, 'additional:data_status': {'baseline_value': 'ILLUSTRATION: particle size, roughness and inlet speed assumed; connector K from common AIR geometry rule; other interface static jumps explicitly zero', 'unit': 'текст', 'origin': 'metadata', 'source': 'Явная отметка иллюстративного происхождения'}}
+EXCHANGE_VERSION='1.0.0'
+EXCHANGE_PARENT_SHA='a7c632e3355d79188adfcbfe9296b19ac332a2a4b235e6e6fec3defa137edf81'
+EXCHANGE_APPLICATION_VERSION='1.6-local-comparison'
+
+
+def exchange_digest(value):
+    import hashlib
+    def canonical(v):
+        if type(v) is float and math.isfinite(v) and v.is_integer():return int(v)
+        if isinstance(v,dict):return {k:canonical(x) for k,x in v.items()}
+        if isinstance(v,list):return [canonical(x) for x in v]
+        return v
+    return hashlib.sha256(json.dumps(canonical(value),sort_keys=True,ensure_ascii=False,allow_nan=False,separators=(',',':')).encode()).hexdigest()
+
+
+def exchange_producer():
+    import ast,hashlib,platform
+    source=Path(__file__).read_text(encoding='utf-8')
+    core=source.split('# Unified interchange:')[0]
+    nodes=[n for n in ast.parse(core).body if isinstance(n,(ast.FunctionDef,ast.ClassDef,ast.Assign,ast.AnnAssign)) and getattr(n,'name',None)!='main']
+    core_sha=hashlib.sha256('\n'.join(ast.dump(n,include_attributes=False) for n in nodes).encode()).hexdigest()
+    return dict(application_version=EXCHANGE_APPLICATION_VERSION,calculator_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        parent_calculator_sha256=EXCHANGE_PARENT_SHA,core_ast_sha256=core_sha,python_version=platform.python_version())
+
+
+def exchange_origin(common,extra,note):
+    records=[]
+    for scope,values in [('common',common),('additional',asdict(extra))]:
+        for key,value in values.items():
+            template=EXCHANGE_BASE_ORIGINS[scope+':'+key]
+            same=value==template['baseline_value']
+            records.append(dict(scope=scope,parameter=key,value=value,unit=template['unit'],
+                origin=template['origin'] if same else 'scenario_or_user_input_unverified',
+                source=template['source'] if same else note,measurement_record_id=None))
+    return records
+
+
+def exchange_inputs(data,flow,extra):
+    d,gas,q,_,_,_=project_common(data,flow)
+    if isinstance(extra,dict):extra=M3Passport(**extra)
+    effective=dict(d,guo_friction_mode=1,pipe_roughness_m=extra.steel_roughness_m,borehole_roughness_m=extra.borehole_roughness_m,core_roughness_m=extra.core_roughness_m)
+    return dict(requested_common=d,effective_common=effective,additional=asdict(extra),
+        flow_reference=dict(Q_m3_min=q,temperature_k=gas.reference_temperature_k,pressure_pa=gas.reference_pressure_pa))
+
+
+def exchange_geometry(d):
+    channels,_=project_channels(d)
+    names={'annulus_drill_pipe':'return_wide','annulus_core_barrel':'return_narrow','around_core':'supply_core','empty_core_barrel':'supply_empty','inside_drill_pipe':'supply_pipe'}
+    dims={'return_wide':(d['brhl_diam_D'],d['out_diam_dril_pipe_d']),
+          'return_narrow':(d['brhl_diam_D'],d['out_diam_core_pipe_dh']),
+          'supply_core':(d['in_diam_core_pipe_db'],d['core_diam_dk']),
+          'supply_empty':(d['in_diam_core_pipe_db'],0.),'supply_pipe':(d['in_diam_dril_pipe_d1'],0.)}
+    rows=[]
+    for ch in channels:
+        s=ch['section'];sid=names[s.name];outer,inner=dims[sid]
+        rows.append(dict(section_id=sid,source_name=s.name,path='return' if ch['flow']=='up' else 'supply',
+            depth_top_m=ch['top_depth'],depth_bottom_m=ch['bottom_depth'],outer_diameter_m=outer,inner_diameter_m=inner,
+            area_m2=s.area_m2,hydraulic_diameter_m=s.hydraulic_diameter_m,
+            flow_direction='decreasing_depth' if ch['flow']=='up' else 'increasing_depth'))
+    return rows
+
+
+def exchange_junctions(sections):
+    lookup={s['section_id']:s for s in sections}
+    def ref(sid,end):
+        s=lookup[sid];i=0 if end=='top' else len(s['nodes'])-1
+        return dict(section_id=sid,node_index=i)
+    pairs=[('return_expansion','return_narrow','top','return_wide','bottom')]
+    supply=[sid for sid in ('supply_pipe','supply_empty','supply_core') if sid in lookup]
+    pairs += [('supply_interface_'+str(i),left,'bottom',right,'top') for i,(left,right) in enumerate(zip(supply,supply[1:]))]
+    pairs += [('bit_interface',supply[-1],'bottom','return_narrow','bottom')]
+    ans=[]
+    for name,left,le,right,re in pairs:
+        before,after=ref(left,le),ref(right,re)
+        a=lookup[left]['nodes'][before['node_index']];b=lookup[right]['nodes'][after['node_index']]
+        ans.append(dict(junction_id=name,depth_m=a['depth_m'],before_flow=before,after_flow=after,
+            pressure_after_minus_before_pa=b['pressure_pa']-a['pressure_pa'],
+            note='Two distinct states in physical flow order; never interpolate across this junction.'))
+    return ans
+
+
+def exchange_homogeneous(raw,d,gas,mg,geometry):
+    byname={s['name']:s for s in raw['sections']};sections=[]
+    for g in geometry:
+        x=byname[g['source_name']];up=g['path']=='return'
+        pt,pb=(x['start_pressure_pa'],x['end_pressure_pa']) if up else (x['end_pressure_pa'],x['start_pressure_pa'])
+        nodes=[]
+        for depth,p in [(g['depth_top_m'],pt),(g['depth_bottom_m'],pb)]:
+            st=state(p,d['well_temp_t'],g['area_m2'],mg,gas)
+            nodes.append(dict(depth_m=depth,pressure_pa=p,temperature_k=d['well_temp_t'],
+                gas_density_kg_m3=st['density_kg_m3'],gas_velocity_m_s=st['gas_velocity_m_s'],
+                solids_velocity_m_s=None,gas_void_fraction=None,solids_volume_fraction=None,
+                gas_energy_index=st['kinetic_energy_index']))
+        sections.append(dict(section_id=g['section_id'],sampling='endpoints_only',nodes=nodes))
+    return sections
+
+
+def exchange_m3_sections(raw,d,geometry):
+    lookup={g['section_id']:g for g in geometry};sections=[]
+    supply_names={'Подача: вокруг керна':'supply_core','Подача: свободная колонковая труба':'supply_empty','Подача: бурильная труба':'supply_pipe'}
+    all_parts=[('return_narrow',raw['return_sections'][0]),('return_wide',raw['return_sections'][1])]
+    all_parts += [(supply_names[p['name']],p) for p in raw['supply_sections']]
+    denom=(.0765*.45359237/.3048**3)*15.24**2
+    has_solids=raw['mass_solids_kg_s']>0
+    for sid,part in all_parts:
+        g=lookup[sid];solid=has_solids and g['path']=='return';nodes=[]
+        for row in part['rows']:
+            nodes.append(dict(depth_m=g['depth_bottom_m']-row['z_m'],pressure_pa=row['pressure_pa'],temperature_k=d['well_temp_t'],
+                gas_density_kg_m3=row['gas_density_kg_m3'],gas_velocity_m_s=row['gas_velocity_m_s'],
+                solids_velocity_m_s=row['solids_velocity_m_s'] if solid else None,
+                gas_void_fraction=row['voidage'],solids_volume_fraction=row['solids_volume_fraction'],
+                gas_energy_index=row['gas_density_kg_m3']*row['gas_velocity_m_s']**2/denom))
+        sections.append(dict(section_id=sid,sampling='solver_nodes',nodes=sorted(nodes,key=lambda n:n['depth_m'])))
+    return sections
+
+
+def exchange_m3_status(raw):
+    ret=raw['return_profile'];both=ret+[r for p in raw['supply_sections'] for r in p['rows']]
+    checks={
+        'positive_pressure':min(r['pressure_pa'] for r in both)>0,
+        'gas_fraction':all(.8<=r['voidage']<=1 for r in both),
+        'gas_Re':min(r['gas_Re'] for r in both)>=4000,
+        'isothermal_margin':min(r['isothermal_sonic_margin'] for r in both)>.05,
+        'sphere_clearance':raw['maximum_particle_to_clearance_ratio']<1-1e-12 if raw['mass_solids_kg_s'] else True}
+    if raw['mass_solids_kg_s']:
+        checks.update(positive_slip=all(r['slip_m_s']>0 for r in ret),particle_Re=all(0<r['particle_Re']<=1e4 for r in ret),
+            density_order=all(r['gas_density_kg_m3']<raw['inputs']['rock_density_ro'] for r in ret))
+        for p in raw['return_sections']:
+            c=p['case'];A=math.pi/4*(c['outer_diameter_m']**2-c['inner_diameter_m']**2);js=c['solids_mass_kg_s']/A
+            checks['solid_denominator_'+p['name']]=all(js-r['solids_modulus_pa']*r['solids_volume_fraction']/r['solids_velocity_m_s']>1e-10*js for r in p['rows'])
+        checks['Yang_branch']=all(r['gas_to_terminal_ratio']>1.5 for r in ret) if raw['additional_inputs']['yang_regime']=='source_high_only' else all(r['yang_branch'] in ('high','low') for r in ret)
+    tol=raw['numerical_tolerances']['pressure_boundary_pa']
+    numerical=dict(status='passed' if abs(raw['outlet_residual_pa'])<=2*tol and max(raw['gas_mass_relative_error'],raw['solids_mass_relative_error'])<=1e-9 and abs(raw['pressure_budget_closure_pa'])<=1e-6 else 'failed',
+        outlet_residual_pa=raw['outlet_residual_pa'],allowed_outlet_residual_pa=2*tol,
+        gas_mass_relative_error=raw['gas_mass_relative_error'],solids_mass_relative_error=raw['solids_mass_relative_error'],
+        pressure_budget_residual_pa=raw['pressure_budget_closure_pa'],rtol=raw['numerical_tolerances']['rtol'],
+        convergence_status='not_assessed_in_this_export',certified_error_bound=False)
+    closures=dict(status='passed_at_saved_nodes' if all(checks.values()) else 'failed',checks=checks)
+    particles=dict(status=('passed' if min(r['solids_velocity_m_s'] for r in ret)>0 else 'failed') if raw['mass_solids_kg_s'] else 'not_applicable',
+        interpretation='Mean solid-phase motion only; does not establish complete cleaning.')
+    return numerical,closures,particles
+
+
+def exchange_calculate(data,flow=None,extra=None,scenario_name='',source_note='User-supplied or illustrative inputs; not measurements.',precomputed=None):
+    d,gas,q,mg,ms,_=project_common(data,flow)
+    if d['source_literal_mode'] or d['geometry_mode']!=1 or d['up_formula_variant']!=1 or abs(d['drilling_angle_alfa']-90)>1e-9:
+        raise ValueError('Общий обмен v1: нужны общий режим, полная геометрия, AIR=1 и вертикальный ствол.')
+    if extra is None:raise ValueError('Явно задайте дополнительный паспорт, в том числе его происхождение.')
+    if isinstance(extra,dict):extra=M3Passport(**extra)
+    inputs=exchange_inputs(d,q,extra);effective=inputs['effective_common']
+    fingerprint=exchange_digest(inputs)
+    group_inputs=dict(common=d,additional={k:v for k,v in asdict(extra).items() if k not in ('particle_diameter_m','maximum_particle_diameter_m','data_status')})
+    geometry=exchange_geometry(d);models=[];precomputed=precomputed or {}
+    qrule=project_common(d)[2]
+    for mid,label in [('M1','M1_AIR'),('M2','M2_Nikuradse'),('M3','M3_steady_two_velocity')]:
+        result=dict(model_id=mid,label=label,result_origin='calculated',solution_status='rejected',failure=None,
+            summary=dict(surface_supply_pressure_pa=None,return_bottom_pressure_pa=None,supply_bottom_pressure_pa=None,receiver_pressure_pa=None),
+            profiles=[],junctions=[],gas_velocity_definition='intrinsic_phase_velocity' if mid=='M3' else 'gas_volumetric_flux_over_total_area',
+            numerical=dict(status='not_assessed'),closures=dict(status='not_assessed'),particles=dict(status='not_assessed'),
+            cleaning=dict(primary_name='AIR_flow_assignment' if mid=='M1' else 'Guo_sampled_gas_energy' if mid=='M2' else 'not_established',
+                primary_status='not_assessed' if mid!='M3' else 'not_established',sufficient_cleaning_status='not_established',experimental_status='not_assessed'),
+            gas_energy=dict(status='not_assessed',minimum_index=None,sample_count=0,continuous_minimum_certified=False,reference_density_kg_m3=.0765*.45359237/.3048**3,reference_speed_m_s=15.24))
+        if mid in precomputed and precomputed[mid]['input_fingerprint']!=fingerprint:
+            raise ValueError('Кэш относится к другому паспорту или расходу.')
+        try:
+            reused=precomputed.get(mid)
+            if reused:
+                if reused['status']!='computed':raise M3DomainError(reused['reason'])
+                raw=reused['result']
+            else:raw=m3_full_circuit(d,q,extra) if mid=='M3' else m3_controlled_homogeneous(d,q,extra,label)
+        except (ValueError,ArithmeticError) as exc:
+            result['failure']=dict(category='calculation_or_closure_refusal',exception_type=type(exc).__name__,message=str(exc),physical_failure_proven=False)
+            models.append(result);continue
+        if reused and mid=='M3' and (raw['inputs']!=d or raw['additional_inputs']!=asdict(extra) or raw['Q_reference_m3_min']!=q):
+            raise ValueError('Профиль кэша не соответствует входам случая.')
+        result['solution_status']='computed'
+        result['profiles']=exchange_m3_sections(raw,d,geometry) if mid=='M3' else exchange_homogeneous(raw,d,gas,mg,geometry)
+        result['junctions']=exchange_junctions(result['profiles'])
+        lookup={s['section_id']:s for s in result['profiles']}
+        supply_bottom=next(s for s in result['profiles'] if s['section_id']=='supply_core' or s['section_id']=='supply_empty' and 'supply_core' not in lookup)['nodes'][-1]['pressure_pa']
+        result['summary']=dict(surface_supply_pressure_pa=raw['surface_supply_pressure_pa'],return_bottom_pressure_pa=raw['return_bottom_pressure_pa'],
+            supply_bottom_pressure_pa=supply_bottom,receiver_pressure_pa=raw['receiver_pressure_pa'])
+        nodes=[n for s in result['profiles'] if s['section_id'].startswith('return_') for n in s['nodes']]
+        I=min(n['gas_energy_index'] for n in nodes)
+        result['gas_energy'].update(status='passed' if I>=1 else 'failed',minimum_index=I,sample_count=len(nodes))
+        if mid=='M3':
+            result['numerical'],result['closures'],result['particles']=exchange_m3_status(raw)
+        else:
+            result['numerical']=dict(status='not_applicable',convergence_status='algebraic_or_analytic_section_formula')
+            result['closures']=dict(status='not_audited_here',source_diagnostics=[s['friction_regime'] for s in raw['sections']])
+            result['particles']=dict(status='not_applicable',interpretation='Separate solid velocity is not resolved.')
+            result['cleaning']['primary_status']=('passed' if q>=qrule else 'failed') if mid=='M1' else result['gas_energy']['status']
+        models.append(result)
+    try:
+        cr=m3_controlled_homogeneous(d,q,extra,'M2_shared_Chen')
+        control=dict(status='computed',surface_supply_pressure_pa=cr['surface_supply_pressure_pa'],origin='calculated_controlled_variant_not_measurement')
+    except (ValueError,ArithmeticError) as exc:control=dict(status='rejected',surface_supply_pressure_pa=None,reason=str(exc))
+    payload=dict(schema='kudryashov.exchange',schema_version=EXCHANGE_VERSION,case_id='KUDR-'+fingerprint[:20],input_fingerprint=fingerprint,
+        group_id='GROUP-'+exchange_digest(group_inputs)[:16],scenario_name=scenario_name,
+        created_moscow=datetime.now(timezone(timedelta(hours=3))).isoformat(),producer=exchange_producer(),
+        units=dict(pressure='Pa',length='m',velocity='m/s',temperature='K',mass_flow='kg/s',gas_reference_flow='m3/min'),
+        coordinate=dict(name='depth_m',origin='wellhead',positive_direction='down',pressure_basis='absolute'),
+        passport={**inputs,'provenance':exchange_origin(effective,extra,source_note),'roughness_authority':'additional passport; raw requested zero placeholders are retained separately'},
+        phase_mass_rates=dict(gas_kg_s=mg,solids_kg_s=ms),geometry=geometry,models=models,
+        controls=dict(M2_shared_Chen=control),observations=[],
+        evidence=dict(input_measurement_claim=False,field_validation_status='not_assessed',source_note=source_note,
+            warning='Calculated outputs and model differences are not experimental measurements.'))
+    exchange_validate(payload)
+    return payload
+
+
+def _exchange_validate(case):
+    def need(ok,msg):
+        if not ok:raise ValueError('Обмен JSON: '+msg)
+    def finite_number(v):return type(v) in (int,float) and math.isfinite(v)
+    def walk(value):
+        if isinstance(value,float):need(math.isfinite(value),'NaN/Infinity запрещены.')
+        elif isinstance(value,dict):
+            for x in value.values():walk(x)
+        elif isinstance(value,list):
+            for x in value:walk(x)
+    walk(case)
+    need(case.get('schema')=='kudryashov.exchange' and case.get('schema_version')==EXCHANGE_VERSION,'неподдерживаемая схема.')
+    need(case['units']==dict(pressure='Pa',length='m',velocity='m/s',temperature='K',mass_flow='kg/s',gas_reference_flow='m3/min'),'неверные единицы.')
+    need(case['coordinate']==dict(name='depth_m',origin='wellhead',positive_direction='down',pressure_basis='absolute'),'неверная координата или базис давления.')
+    p=case['passport'];H=p['effective_common']['dpth_h'];ref=p['flow_reference'];need(ref['temperature_k']>0 and ref['pressure_pa']>0 and ref['Q_m3_min']>0,'неверный базис расхода.')
+    inputs={k:p[k] for k in ('requested_common','effective_common','additional','flow_reference')}
+    need(exchange_digest(inputs)==case['input_fingerprint'],'входы не совпадают с отпечатком.')
+    need(case['case_id']=='KUDR-'+case['input_fingerprint'][:20],'неверный идентификатор случая.')
+    grouping=dict(common=p['requested_common'],additional={k:v for k,v in p['additional'].items() if k not in ('particle_diameter_m','maximum_particle_diameter_m','data_status')})
+    need(case['group_id']=='GROUP-'+exchange_digest(grouping)[:16],'неверная группа сценария.')
+    for scope,key in [('common','effective_common'),('additional','additional')]:
+        rows=[r for r in p['provenance'] if r['scope']==scope]
+        need(len(rows)==len(p[key]) and {r['parameter'] for r in rows}==set(p[key]),'неполное происхождение входов.')
+        need(all(r['value']==p[key][r['parameter']] for r in rows),'происхождение относится к другим значениям.')
+    need(len(case['models'])==3 and {m['model_id'] for m in case['models']}=={'M1','M2','M3'},'нужны ровно М1, М2, М3.')
+    need(not case['observations'],'этот вычислительный экспорт не принимает экспериментальные наблюдения.')
+    for m in case['models']:
+        need(m['result_origin']=='calculated','неверное происхождение результата.')
+        need(m['cleaning']['experimental_status']=='not_assessed' and m['cleaning']['sufficient_cleaning_status']=='not_established','расчёт не подтверждает очистку.')
+        need(m['solution_status'] in ('computed','rejected'),'неверный статус решения.')
+        if m['solution_status']=='rejected':
+            need(all(x is None for x in m['summary'].values()) and m['profiles']==[] and m['junctions']==[],'отказ содержит старые или вымышленные результаты.')
+            need(bool(m['failure']['message']) and m['failure']['physical_failure_proven'] is False,'отказ должен содержать причину без физической гарантии.')
+            continue
+        need(m['failure'] is None,'успешный ответ содержит отказ.')
+        need(all(finite_number(v) and v>0 for v in m['summary'].values()),'неверное абсолютное давление.')
+        lookup={s['section_id']:s for s in m['profiles']};geom={g['section_id']:g for g in case['geometry']}
+        need(set(lookup)==set(geom) and len(lookup)==len(m['profiles']),'неполный набор участков.')
+        for sid,s in lookup.items():
+            g=geom[sid];nodes=s['nodes'];need(len(nodes)>=2,'нет концов участка.')
+            need(abs(nodes[0]['depth_m']-g['depth_top_m'])<1e-8 and abs(nodes[-1]['depth_m']-g['depth_bottom_m'])<1e-8,'профиль не совпадает с геометрией.')
+            need(all(nodes[i]['depth_m']<=nodes[i+1]['depth_m'] for i in range(len(nodes)-1)),'неверный порядок глубин.')
+            for n in nodes:
+                need(0<=n['depth_m']<=H and n['pressure_pa']>0,'неверная глубина или давление узла.')
+                need(n['gas_velocity_m_s']>0,'неверная скорость газа.')
+                if m['model_id'] in ('M1','M2'):need(n['solids_velocity_m_s'] is None and n['solids_volume_fraction'] is None,'однородная модель не разрешает скорость частиц.')
+            if m['model_id'] in ('M1','M2'):need(s['sampling']=='endpoints_only' and len(nodes)==2,'для однородной модели доступны только концы участка.')
+        annular=[n for sid,s in lookup.items() if sid.startswith('return_') for n in s['nodes']]
+        index=min(n['gas_energy_index'] for n in annular)
+        need(abs(m['gas_energy']['minimum_index']-index)<1e-12 and m['gas_energy']['sample_count']==len(annular),'индекс не совпадает с профилем.')
+        need(m['gas_energy']['status']==('passed' if index>=1 else 'failed'),'неверный статус индекса.')
+        need(abs(lookup['supply_pipe']['nodes'][0]['pressure_pa']-m['summary']['surface_supply_pressure_pa'])<1e-6,'P4 не совпадает с профилем.')
+        need(abs(lookup['return_narrow']['nodes'][-1]['pressure_pa']-m['summary']['return_bottom_pressure_pa'])<1e-6,'P2 не совпадает с профилем.')
+        bottom=lookup.get('supply_core',lookup.get('supply_empty'))['nodes'][-1]['pressure_pa']
+        need(abs(bottom-m['summary']['supply_bottom_pressure_pa'])<1e-6,'забой подачи не совпадает с профилем.')
+        need(abs(m['summary']['receiver_pressure_pa']-m['summary']['surface_supply_pressure_pa']-p['effective_common']['receiver_margin_pa'])<1e-6,'неверное давление ресивера.')
+        need(abs(lookup['return_wide']['nodes'][0]['pressure_pa']-p['effective_common']['ATM_PRSSR_P0'])<=1.,'граница давления не совпадает с паспортом.')
+        expected={j['junction_id']:j for j in exchange_junctions(m['profiles'])}
+        need(len(m['junctions'])==len(expected) and {j['junction_id'] for j in m['junctions']}==set(expected),'неполный набор переходов.')
+        for j in m['junctions']:
+            need(all(j[k]==expected[j['junction_id']][k] for k in ('before_flow','after_flow')),'перепутаны стороны перехода.')
+            a,b=(lookup[j[k]['section_id']]['nodes'][j[k]['node_index']] for k in ('before_flow','after_flow'))
+            need(abs(a['depth_m']-b['depth_m'])<1e-8 and abs(a['depth_m']-j['depth_m'])<1e-8,'стык соединяет разные глубины.')
+            need(abs((b['pressure_pa']-a['pressure_pa'])-j['pressure_after_minus_before_pa'])<1e-6,'неверный скачок стыка.')
+    return True
+
+
+def exchange_validate(case):
+    try:return _exchange_validate(case)
+    except (KeyError,TypeError,IndexError) as exc:
+        raise ValueError('Обмен JSON: неполная или неверная структура: '+str(exc)) from exc
+
+
+def exchange_read(path):
+    def pairs(items):
+        ans={}
+        for k,v in items:
+            if k in ans:raise ValueError('Повторный ключ JSON: '+k)
+            ans[k]=v
+        return ans
+    def bad(value):raise ValueError('Недопустимая константа JSON: '+value)
+    result=json.loads(Path(path).read_text(encoding='utf-8-sig'),object_pairs_hook=pairs,parse_constant=bad)
+    exchange_validate(result)
+    return result
+
+
+def exchange_save(result,path):
+    exchange_validate(result);path=Path(path)
+    with path.open('x',encoding='utf-8') as f:json.dump(result,f,ensure_ascii=False,indent=2,allow_nan=False)
+    return path
+
+
+def exchange_menu(data,flow):
+    print('Единый JSON: М1/М2/М3, профили, статусы и происхождение входов.')
+    key=input('1. Иллюстративный дополнительный паспорт\n2. Загрузить дополнительный паспорт\n0. Назад\nПункт: ').strip()
+    if key=='0':return
+    if key=='1':extra=m3_example_passport(data)
+    elif key=='2':
+        saved=json.loads(Path(input('JSON-файл: ').strip().strip(chr(34))).read_text(encoding='utf-8-sig'))
+        extra=M3Passport(**(saved['passport']['additional'] if 'passport' in saved else saved['additional_inputs']))
+    else:raise ValueError('Выберите 0, 1 или 2.')
+    print('Статус дополнительных входов: '+extra.data_status)
+    result=exchange_calculate(data,flow,extra,scenario_name='interactive_export')
+    default=unique_output(Path(__file__).resolve().parent,'exchange_case','json')
+    raw=input('JSON-файл ['+str(default)+']: ').strip().strip(chr(34))
+    path=exchange_save(result,Path(raw).expanduser() if raw else default)
+    for m in result['models']:
+        print(m['model_id']+': '+m['solution_status']+('; P4=%.9f МПа абс.'%(m['summary']['surface_supply_pressure_pa']/1e6) if m['solution_status']=='computed' else '; '+m['failure']['message']))
+    print('Очистка по измерениям не оценена. Сохранено: '+str(path.resolve()))
+
+
+# ML pressure surrogate: a calculated M3 target, not field measurements.
+import struct,math,json
+from pathlib import Path
+
+ML_FEATURE_ORDER=['depth_m','Q_reference_m3_min','penetration_m_h','particle_diameter_m','steel_roughness_m','borehole_roughness_m','core_roughness_m','M1_surface_supply_pressure_pa']
+
+def ml_delta_from_vector(estimator,vector):
+    if len(vector)!=len(ML_FEATURE_ORDER) or not all(type(v) in (int,float) and math.isfinite(v) for v in vector):
+        raise ValueError('ML: неверные входные признаки.')
+    kind=estimator['kind']
+    if kind=='constant':return float(estimator['value_pa'])
+    if kind=='ridge':
+        return estimator['intercept_pa']+sum(c*(x-m)/s for x,m,s,c in zip(vector,estimator['mean'],estimator['scale'],estimator['coefficients']))
+    if kind=='gradient_boosting':
+        # scikit-learn1.8 converts tree inputs to float32 before traversal.
+        values=[struct.unpack('f',struct.pack('f',float(x)))[0] for x in vector]
+        result=estimator['initial_pa']
+        for tree in estimator['trees']:
+            i=0
+            for _ in range(len(tree['left'])+1):
+                left=tree['left'][i]
+                if left<0:result+=estimator['learning_rate']*tree['value'][i];break
+                i=left if values[tree['feature'][i]]<=tree['threshold'][i] else tree['right'][i]
+            else:raise ValueError('ML: неверная структура дерева.')
+        return result
+    raise ValueError('ML: неизвестный тип поправки.')
+
+def ml_validate_model(payload):
+    if payload.get('schema')!='kudryashov.ml_correction' or payload.get('schema_version')!='1.0.0':raise ValueError('ML: неподдерживаемая модель.')
+    if payload['feature_order']!=ML_FEATURE_ORDER:raise ValueError('ML: другой состав признаков.')
+    if payload['target_kind']!='calculated_M3_minus_M1_not_measurement':raise ValueError('ML: другая целевая величина.')
+    if payload['required_core_ast_sha256']!=exchange_producer()['core_ast_sha256']:raise ValueError('ML: расчетное ядро отличается от ядра обучающей выборки.')
+    if payload.get('scientific_role','M3_pressure_emulator')!='M3_pressure_emulator':raise ValueError('ML: данная функция принимает только эмулятор расчетной М3.')
+    estimator=payload['estimator'];kind=estimator['kind']
+    if kind=='ridge':
+        for key in ['mean','scale','coefficients']:
+            if len(estimator[key])!=len(ML_FEATURE_ORDER) or not all(type(v) in (int,float) and math.isfinite(v) for v in estimator[key]):raise ValueError('ML: поврежденные параметры линейной поправки.')
+        if not all(v>0 for v in estimator['scale']) or not math.isfinite(estimator['intercept_pa']):raise ValueError('ML: неверный масштаб или свободный член.')
+    elif kind=='constant':
+        if not math.isfinite(estimator['value_pa']):raise ValueError('ML: неверная постоянная поправка.')
+    elif kind!='gradient_boosting':raise ValueError('ML: неизвестный тип поправки.')
+    return payload
+
+def ml_model_read(path):
+    return ml_validate_model(json.loads(Path(path).read_text(encoding='utf-8-sig')))
+
+def ml_pressure_estimate(data,flow,extra,model):
+    ml_validate_model(model)
+    d,gas,q,_,_,_=project_common(data,flow)
+    if isinstance(extra,dict):extra=M3Passport(**extra)
+    x=asdict(extra);reasons=[]
+    def same(a,b):
+        if type(a) in (int,float) and type(b) in (int,float):return math.isclose(a,b,rel_tol=1e-12,abs_tol=1e-15)
+        return a==b
+    for key,value in model['scope']['fixed_common'].items():
+        if not same(d[key],value):reasons.append('изменен фиксированный параметр '+key)
+    for key,value in model['scope']['fixed_additional'].items():
+        if not same(x[key],value):reasons.append('изменен фиксированный параметр '+key)
+    physical=dict(depth_m=d['dpth_h'],Q_reference_m3_min=q,penetration_m_h=d['mech_spd_vm'],particle_diameter_m=x['particle_diameter_m'],
+        steel_roughness_m=x['steel_roughness_m'],borehole_roughness_m=x['borehole_roughness_m'],core_roughness_m=x['core_roughness_m'])
+    for key,(lo,hi) in model['scope']['bounds'].items():
+        v=physical[key];tol=1e-12*max(abs(lo),abs(hi),1e-12)
+        if not lo-tol<=v<=hi+tol:reasons.append(key+' вне ['+str(lo)+', '+str(hi)+']')
+    if not same(x['maximum_particle_diameter_m'],x['particle_diameter_m']):reasons.append('обучение выполнено только при dmax=dp')
+    expected=m3_example_passport(d).connection_total_K
+    if not same(x['connection_total_K'],expected):reasons.append('сумма K соединений отличается от принятого правила')
+    result=dict(schema='kudryashov.ml_pressure_estimate',schema_version='1.0.0',prediction_origin='emulation_of_calculated_M3',scientific_role='M3_pressure_emulator',comparison_reference='calculated_M3',M1_measurement_calibration_status='not_trained',measurement_based_accuracy_improvement_established=False,
+        model_id=model['model_id'],estimator_kind=model['estimator']['kind'],status='outside_registered_scope' if reasons else 'estimated',
+        reasons=reasons,M1_surface_supply_pressure_pa=None,correction_pa=None,M3_like_surface_supply_estimate_pa=None,
+        M3_full_solution_computed=False,profiles=None,numerical_closures_status='not_assessed',sufficient_cleaning_status='not_established',experimental_cleaning_status='not_assessed',
+        physics_control_preferred_by_development_cv=model['physics_control_preferred_by_development_cv'],
+        interpretation='Emulation of calculated M3 pressure using M1 as a baseline feature. Agreement with M3 is not accuracy against measurements. M1 calibration against measurements has not been trained. Input-box membership does not establish M3 closure or cleaning.')
+    if reasons:return result
+    raw=m3_controlled_homogeneous(d,q,extra,'M1_AIR');p=raw['surface_supply_pressure_pa']
+    features={**physical,'M1_surface_supply_pressure_pa':p};delta=ml_delta_from_vector(model['estimator'],[features[k] for k in ML_FEATURE_ORDER]);predicted=p+delta
+    if not math.isfinite(predicted) or predicted<=0:raise ValueError('ML: поправка дала недопустимое давление; требуется полный расчет.')
+    result.update(M1_surface_supply_pressure_pa=p,correction_pa=delta,M3_like_surface_supply_estimate_pa=predicted,features=features)
+    return result
+
+def ml_pressure_menu(data,flow):
+    print('Эмулятор давления М3: использует расчет М1 и заранее обученную разность с М3.')
+    print('Назначение: быстрое приближение к вычислительной М3. Физическая поправка М1 по измерениям не обучена.')
+    default=Path(__file__).resolve().with_name('correction_model.json')
+    raw=input('Файл эмулятора ['+str(default)+']: ').strip().strip(chr(34));model=ml_model_read(Path(raw) if raw else default)
+    key=input('1. Иллюстративный дополнительный паспорт\n2. Загрузить дополнительный паспорт\n0. Назад\nПункт: ').strip()
+    if key=='0':return
+    if key=='1':extra=m3_example_passport(data)
+    elif key=='2':
+        payload=json.loads(Path(input('JSON-файл: ').strip().strip(chr(34))).read_text(encoding='utf-8-sig'))
+        extra=M3Passport(**(payload['passport']['additional'] if 'passport' in payload else payload['additional_inputs']))
+    else:raise ValueError('Выберите 0, 1 или 2.')
+    result=ml_pressure_estimate(data,flow,extra,model)
+    if result['status']!='estimated':
+        print('Вне области эмулятора: '+'; '.join(result['reasons']))
+        print('Для этого паспорта нужен полный расчет М3 через пункт20.');return
+    print('М1: %.9f МПа абс.; обученная разность с М3: %+.6f кПа.'%(result['M1_surface_supply_pressure_pa']/1e6,result['correction_pa']/1000))
+    print('Эмуляция давления расчетной М3: %.9f МПа абс.'%(result['M3_like_surface_supply_estimate_pa']/1e6))
+    if result['physics_control_preferred_by_development_cv']:print('В групповой проверке контроль с измененным трением ближе к М3, чем выбранный эмулятор.')
+    print('Это оценка одного давления М3. Точность по измерениям, профиль и достаточная очистка не установлены.')
+    path=unique_output(Path(__file__).resolve().parent,'ml_pressure_estimate','json')
+    path.write_text(json.dumps(result,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8');print('Сохранено: '+str(path))
+
+
+# Local experimental pressure-gradient comparison. Project reduction, not a
+# claim that any whole-well method has already been experimentally calibrated.
+
+def nf_local_kinematics(point,pressure_pa=101325.,temperature_k=293.15,roughness_m=.00009144):
+    U=point['superficial_velocity_m_s'];ms=point['solids_mass_kg_s'];D=.0534;area=math.pi*D*D/4
+    require_finite(U,ms,pressure_pa,temperature_k,roughness_m)
+    if min(U,pressure_pa,temperature_k)<=0 or ms<0 or not 0<=roughness_m<D/2:raise ValueError('Локальный тест: неверные входы.')
+    rho=pressure_pa/(287*temperature_k);mu=1.716e-5*(temperature_k/273.)**1.5*(273.+111)/(temperature_k+111)
+    mg=rho*U*area;loading=ms/mg;re=mg*D/(area*mu)
+    return dict(U_m_s=U,solids_mass_kg_s=ms,gas_mass_kg_s=mg,gas_density_kg_m3=rho,loading=loading,area_m2=area,diameter_m=D,gas_Re=re,
+        viscosity_pa_s=mu,Q_reference_m3_min=mg*287*273/100000*60,pressure_pa=pressure_pa,temperature_k=temperature_k,roughness_m=roughness_m)
+
+
+def nf_local_model(point,model,pressure_pa=101325.,temperature_k=293.15,roughness_m=.00009144,AIR_kr=1.2):
+    """Positive static gradient G=-dp/dz, z upwards. No total length is assumed.
+
+    M1: h->0 derivative of the existing AIR upflow step.
+    M2: derivative of the existing homogeneous pressure ODE.
+    Both use the same *superficial* gas input and their declared friction law.
+    M3: existing conditional equilibrium local benchmark, including acceleration.
+    """
+    allowed=('M1_local_AIR','M2_local_Nikuradse','M3_local_two_velocity','M1_local_Chen','M2_local_Chen','M2_local_Weymouth')
+    if model not in allowed:raise ValueError('Неизвестная локальная модель.')
+    require_finite(AIR_kr)
+    if AIR_kr<=0:raise ValueError('Положительный AIR kr обязателен.')
+    k=nf_local_kinematics(point,pressure_pa,temperature_k,roughness_m);U=k['U_m_s'];rho=k['gas_density_kg_m3'];M=1+k['loading'];D=k['diameter_m']
+    if model=='M3_local_two_velocity':
+        raw=m3_narimatsu_local(point,pressure_pa=pressure_pa,temperature_k=temperature_k,roughness_m=roughness_m)
+        case=M3Case(**raw['case']);state=m3_local(case,pressure_pa,raw['solids_velocity_m_s']);dp,dus=m3_derivative(case,pressure_pa,raw['solids_velocity_m_s'])
+        sonic=state['isothermal_sonic_margin'];deps=state['solids_volume_fraction']*dus/raw['solids_velocity_m_s'] if k['solids_mass_kg_s'] else 0.
+        phase_residual=state['drag_N_m3']-state['solids_wall_N_m3']-state['solids_weight_N_m3']
+        terms=dict(gas_wall=state['gas_wall_N_m3']/sonic,gas_weight=state['gas_weight_N_m3']/sonic,solids_wall=state['solids_wall_N_m3']/sonic,solids_weight=state['solids_weight_N_m3']/sonic,
+            equilibrium_and_voidage_residual=(phase_residual-rho*state['gas_velocity_m_s']**2*deps)/sonic)
+        return dict(model_id=model,status='computed',gradient_pa_m=raw['gradient_pa_m'],kinematics=k,friction_darcy=4*state['gas_fanning'],terms_pa_m=terms,
+            gas_acceleration_denominator=sonic,numerator_gradient_pa_m=raw['gradient_pa_m']*sonic,solids_velocity_m_s=raw['solids_velocity_m_s'],voidage=raw['voidage'],
+            phase_force_residual_pa_m=phase_residual,equilibrium_solids_velocity_derivative_s_inv=dus,
+            interpretation='Existing local M3 reduction, not a measured result or a full well profile.')
+    if model in ('M1_local_AIR','M2_local_Weymouth'):f=.009407/D**(1/3);law='common-mode AIR diameter law'
+    elif model=='M2_local_Nikuradse':f=nikuradse(roughness_m,D);law='native fully rough Nikuradse'
+    else:f=4*m3_fanning(k['gas_Re'],roughness_m/D);law='shared gas Chen, Darcy=4*Fanning'
+    gravity=M*rho*9.81;multiplier=1+(AIR_kr if model.startswith('M1_') else 1)*k['loading'];wall=f*multiplier*rho*U*U/(2*D)
+    diagnostic=friction_regime_check(temperature_k,k['gas_mass_kg_s'],k['area_m2'],D,roughness_m)
+    return dict(model_id=model,status='computed',gradient_pa_m=gravity+wall,kinematics=k,friction_darcy=f,friction_law=law,friction_diagnostic=diagnostic,terms_pa_m=dict(gravity=gravity,wall=wall),
+        solids_velocity_m_s=None,voidage=None,gas_acceleration_denominator=None,interpretation='Project local reduction of the frozen M1/M2 equations; homogeneous transport, not a particle-speed prediction.')
+
+
+def nf_local_models(point,**assumptions):
+    results={}
+    for model in ('M1_local_AIR','M2_local_Nikuradse','M3_local_two_velocity','M1_local_Chen','M2_local_Chen','M2_local_Weymouth'):
+        try:results[model]=nf_local_model(point,model,**assumptions)
+        except (ValueError,ArithmeticError) as exc:results[model]=dict(model_id=model,status='rejected',gradient_pa_m=None,reason=str(exc))
+    return results
+
+
+def nf_local_metrics(rows,model):
+    eligible=[r for r in rows if r['primary_curve_subset'] and r['models'][model]['status']=='computed']
+    if not eligible:return dict(n=0,MAE_pa_m=None,RMSE_pa_m=None,bias_pa_m=None,MAPE_percent=None)
+    errors=[r['models'][model]['gradient_pa_m']-r['gradient_pa_m'] for r in eligible];n=len(errors)
+    return dict(n=n,MAE_pa_m=sum(abs(e) for e in errors)/n,RMSE_pa_m=math.sqrt(sum(e*e for e in errors)/n),bias_pa_m=sum(errors)/n,
+        maximum_absolute_error_pa_m=max(abs(e) for e in errors),MAPE_percent=100*sum(abs(e)/r['gradient_pa_m'] for e,r in zip(errors,eligible))/n)
+
+
+def nf_local_compare(pressure_pa=101325.,temperature_k=293.15,roughness_m=.00009144,AIR_kr=1.2,include_scenarios=True):
+    """Fixed published series and pre-existing marker selection, no fitting."""
+    e=m3_narimatsu_evidence();points=[p for p in e['points'] if p['series_id']=='glass_1mm_0041'];assumptions=dict(pressure_pa=pressure_pa,temperature_k=temperature_k,roughness_m=roughness_m,AIR_kr=AIR_kr)
+    # Validate inputs even if a particular closure refuses them.
+    nf_local_kinematics(points[0],pressure_pa,temperature_k,roughness_m)
+    if not math.isfinite(AIR_kr) or AIR_kr<=0:raise ValueError('Положительный AIR kr обязателен.')
+    rows=[]
+    for p in points:
+        models=nf_local_models(p,**assumptions);row=dict(p,models=models)
+        if p['primary_curve_subset']:
+            observed_air=m3_interpolate_air(e['points'],p['superficial_velocity_m_s']);airpoint=dict(p,solids_mass_kg_s=0.)
+            air_models=nf_local_models(airpoint,**assumptions);increments={}
+            for name,model in models.items():
+                if model['status']=='computed' and air_models[name]['status']=='computed':increments[name]=model['gradient_pa_m']-air_models[name]['gradient_pa_m']
+            row['air_control_subtraction']=dict(observed_air_interpolated_pa_m=observed_air,observed_particle_increment_pa_m=p['gradient_pa_m']-observed_air,predicted_particle_increments_pa_m=increments,interpolation_error_quantified=False,measurement_error_quantified=False)
+            path=['M1_local_AIR','M2_local_Weymouth','M2_local_Chen','M3_local_two_velocity']
+            if all(models[k]['status']=='computed' for k in path):
+                a,b,c,d=[models[k]['gradient_pa_m'] for k in path];numerator=models[path[-1]]['numerator_gradient_pa_m']
+                contributions=dict(AIR_kr_to_homogeneous=b-a,Weymouth_to_Chen=c-b,two_phase_numerator=numerator-c,gas_acceleration_denominator=d-numerator)
+                row['ordered_decomposition']=dict(path_values_pa_m=[a,b,c,numerator,d],contributions_pa_m=contributions,total_M3_minus_M1_pa_m=d-a,residual_pa_m=sum(contributions.values())-(d-a),independent_causal_effects=False)
+        rows.append(row)
+    names=list(rows[0]['models']);primary=('M1_local_AIR','M2_local_Nikuradse','M3_local_two_velocity')
+    common=[r['point_id'] for r in rows if r['primary_curve_subset'] and all(r['models'][k]['status']=='computed' for k in primary)]
+    air_rows=[dict(p,primary_curve_subset=True,models=nf_local_models(p,**assumptions)) for p in e['points'] if p['solids_mass_kg_s']==0]
+    scenarios=[]
+    if include_scenarios:
+        for pressure in (95000.,101325.,105000.):
+            for temperature in (283.15,293.15,303.15):
+                for roughness in (0.,.00009144,.00015):
+                    ss=dict(pressure_pa=pressure,temperature_k=temperature,roughness_m=roughness,AIR_kr=AIR_kr);case_rows=[dict(p,models=nf_local_models(p,**ss)) for p in points if p['primary_curve_subset']]
+                    shared=all(r['models'][k]['status']=='computed' for r in case_rows for k in primary)
+                    scores={k:nf_local_metrics(case_rows,k) for k in names};winner=min(primary,key=lambda k:scores[k]['MAE_pa_m']) if shared else None
+                    scenarios.append(dict(assumptions=ss,rows=case_rows,metrics=scores,all_three_available=shared,closest_to_observed_by_MAE=winner))
+    kr_checks=[]
+    for kr in (1.,1.2,1.4):
+        ss=dict(assumptions,AIR_kr=kr);rr=[dict(p,models=nf_local_models(p,**ss)) for p in points if p['primary_curve_subset']]
+        kr_checks.append(dict(AIR_kr=kr,metrics={k:nf_local_metrics(rr,k) for k in primary}))
+    return dict(schema='kudryashov.local_gradient_comparison',schema_version='1.0.0',case_id='NF2001_F4a_GLASS_1mm_WS0041',
+        observable=dict(name='positive static pressure gradient G=-dp/dz, z upward',unit='Pa/m',whole_well_pressure=False),assumptions=assumptions,
+        source=dict(doi=e['doi'],figure='4(a)',figure_sha256=e['figure_sha256'],previous_digitization_reused=True),
+        geometry=e['geometry'],rows=rows,metrics={k:nf_local_metrics(rows,k) for k in names},common_primary_point_ids=common,
+        air_control=dict(rows=air_rows,metrics={k:nf_local_metrics(air_rows,k) for k in names}),assumption_scenarios=scenarios,kr_only_checks=kr_checks,
+        evidence=dict(parameter_fitting=False,ML_training=False,measurement_uncertainty_known=False,digitization_bound_is_measurement_uncertainty=False,physical_accuracy_established=False,cleaning_established=False),
+        interpretation='Conditional local adaptations compared with selected independent measurements; no claim of full-well accuracy or transfer of a calibration.')
+
+
+def nf_local_text(result):
+    keys=('M1_local_AIR','M2_local_Nikuradse','M3_local_two_velocity')
+    lines=['ЛОКАЛЬНЫЙ ОПЫТ: ГРАДИЕНТ ДАВЛЕНИЯ, Па/м','Источник: Narimatsu и Ferreira 2001, рис.4(a), стекло 1 мм, 0.041 кг/с, труба 53.4 мм.',
+        'p=%.1f Па, T=%.2f К, шероховатость=%.6f мм, AIR kr=%.3g: предположения.'%(result['assumptions']['pressure_pa'],result['assumptions']['temperature_k'],result['assumptions']['roughness_m']*1000,result['assumptions']['AIR_kr']),
+        'U, м/с | Измеренный градиент | М1, локальный предел | М2, Nikuradse | М3, локальное равновесие']
+    for row in result['rows']:
+        if not row['primary_curve_subset']:continue
+        values=['%.3f'%row['models'][k]['gradient_pa_m'] if row['models'][k]['status']=='computed' else 'отказ' for k in keys]
+        lines.append('%.3f | %.3f | '%(row['superficial_velocity_m_s'],row['gradient_pa_m'])+' | '.join(values))
+    for key in keys:
+        v=result['metrics'][key];lines.append(key+(': MAE=%.3f Па/м, точек=%d.'%(v['MAE_pa_m'],v['n']) if v['n'] else ': нет допустимых результатов.'))
+    lines.extend(['М1 здесь является локальным пределом формулы AIR, М2 локальной производной уравнения, М3 локальным равновесным состоянием.',
+        'Оцифровка около +/-5.10 Па/м не является приборной погрешностью. Это условное сравнение, не подтверждение точности P4 или очистки.'])
+    return '\n'.join(lines)
+
+
+def nf_local_menu():
+    print('Отдельный паспорт опыта: круглая труба 53.4 мм, стекло 1 мм, подача 0.041 кг/с.')
+    print('Измеряемая величина: локальный градиент статического давления, Па/м.')
+    raw=input('1. Базовые допущения и 27 сценариев\n2. Задать p,T,шероховатость и AIR kr\n0. Назад\nПункт: ').strip()
+    if raw=='0':return
+    if raw=='1':result=nf_local_compare()
+    elif raw=='2':
+        p=number(input('Локальное абсолютное давление, Па: '));T=number(input('Температура, К: '));eps=number(input('Шероховатость, мм: '))/1000;kr=number(input('AIR kr: '))
+        result=nf_local_compare(p,T,eps,kr,include_scenarios=False)
+    else:raise ValueError('Выберите 0, 1 или 2.')
+    print(nf_local_text(result));folder=Path(__file__).resolve().parent
+    path=unique_output(folder,'local_gradient_comparison','json');path.write_text(json.dumps(result,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
+    note=path.with_suffix('.txt');note.write_text(nf_local_text(result),encoding='utf-8');print('Сохранено: '+str(path))
+
 
 if __name__=='__main__':
     try:
