@@ -1,0 +1,2783 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Интерактивная 3D-демонстрация колонкового бурения и продувки скважины воздухом.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>Бурение с продувкой · Проект «Кудряшов»</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23172d3b'/%3E%3Cpath d='M16 6v17m-5-5 5 5 5-5M8 26h16' fill='none' stroke='%2385dff8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root {
+  color-scheme: dark;
+  --paper: #0b131c;
+  --panel: #131f2a;
+  --panel-deep: #0c1823;
+  --ink: #edf3f6;
+  --muted: #a5b6c2;
+  --line: #2c3d4a;
+  --cyan: #85dff8;
+  --amber: #ffc377;
+  --core: #ebc9a2;
+  --rust: #ffa279;
+  --mint: #a4e0c8;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at 27% 0, #182b3a 0, transparent 55%), var(--paper);
+  color: var(--ink);
+  font: 15px/1.5 "Inter", "Segoe UI", sans-serif;
+}
+
+button, input { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: .48; }
+button:focus-visible, input:focus-visible, canvas:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+}
+
+.top { border-bottom: 1px solid var(--line); }
+.top-inner, .wrap { width: min(1760px, 100% - 64px); margin: auto; }
+
+.top-inner {
+  min-height: 59px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.brand-symbol {
+  display: grid;
+  width: 29px;
+  height: 29px;
+  place-items: center;
+  border: 1px solid #536d79;
+  border-radius: 7px;
+  color: var(--cyan);
+  background: #172d3b;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.top-note {
+  padding-left: 12px;
+  border-left: 1px solid #41535f;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.screen-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 35px;
+  padding: 4px 11px;
+  border: 1px solid #536875;
+  border-radius: 7px;
+  color: var(--ink);
+  background: #192c38;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.screen-button:hover, .screen-button[aria-pressed="true"] {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.screen-icon { font-size: 19px; line-height: 1; }
+
+.wrap { padding: 24px 0 17px; }
+.intro { margin-bottom: 19px; }
+
+h1 {
+  margin: 0 0 5px;
+  font-size: clamp(34px, 4.5vw, 66px);
+  font-weight: 730;
+  letter-spacing: -.056em;
+  line-height: 1.04;
+}
+
+.intro p { margin: 0; color: var(--muted); font-size: clamp(14px, 1.15vw, 17px); }
+
+.page-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 18px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.page-nav a {
+  padding: 7px 13px; border: 1px solid transparent; border-radius: 7px; color: #c3d4df;
+  font-size: 13px; font-weight: 670; text-decoration: none;
+}
+.page-nav a:hover, .page-nav a[aria-current="page"] { border-color: #6590a1; background: #223d4d; color: var(--ink); }
+.page-nav a:focus-visible, .page-action:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.report { max-width: 1160px; margin-inline: auto; }
+.report h1 { font-size: clamp(32px, 4.1vw, 57px); }
+.report-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.report-card { min-width: 0; padding: clamp(15px, 2.4vw, 24px); border: 1px solid #354a5a; border-radius: 12px; background: var(--panel); }
+.report-card h2 { margin: 0 0 10px; font-size: clamp(17px, 2vw, 23px); line-height: 1.25; }
+.report-card h3 { margin: 15px 0 6px; font-size: 14px; color: var(--cyan); }
+.report-card p { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.report-table th, .report-table td { padding: 7px 0; border-bottom: 1px solid var(--line); text-align: left; }
+.report-table tr:last-child > * { border-bottom: 0; }
+.report-table th[scope="row"] { padding-right: 9px; font-weight: 560; }
+.report-table th[scope="col"] { color: var(--muted); font-weight: 600; }
+.report-table td:last-child, .report-table th:last-child[scope="col"] { text-align: right; }
+.report-table .result-number { color: var(--cyan); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.report-table .point-name { display: inline-block; min-width: 3.1em; color: var(--cyan); }
+.result-key { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; margin: 0 0 15px; }
+.result-key div { padding: 10px; border-radius: 8px; background: var(--panel-deep); }
+.result-key dt { color: var(--muted); font-size: 12px; }
+.result-key dd { margin: 2px 0 0; color: var(--cyan); font-size: clamp(17px,2.8vw,26px); font-weight: 730; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.result-key small { color: var(--muted); font-size: 11px; font-weight: 560; }
+.report-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+.page-action { padding: 6px 12px; text-decoration: none; }
+.report-card details { margin-top: 11px; }
+.report-card summary { cursor: pointer; color: var(--cyan); font-size: 13px; }
+.formula-line { padding: 7px 0 9px; overflow-x: auto; }
+.formula-line math { color: var(--ink); font-size: 1.06rem; }
+.formula-wide { grid-column: 1 / -1; }
+.sample-info { padding: 10px 12px; border: 1px solid #4b7484; border-radius: 8px; background: #16303e; }
+.sample-info strong { display: block; color: var(--cyan); }
+.sample-info p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+.sample-info a { display: inline-block; margin-top: 7px; color: var(--cyan); font-size: 13px; }
+.sample-mode :is(.indicators, .mode-group, .mode-description, .controls, .core-progress, .tempo) { display: none; }
+
+@media (max-width: 760px) {
+  .report-grid { grid-template-columns: minmax(0, 1fr); }
+  .result-key dd { white-space: normal; }
+  .page-nav { margin-bottom: 12px; }
+  .page-nav a { padding-inline: 9px; }
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(274px, 23.6vw, 355px);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.scene {
+  position: relative;
+  min-width: 0;
+  min-height: clamp(510px, calc(100svh - 296px), 1100px);
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid #354d5e;
+  border-radius: 15px;
+  background:
+    linear-gradient(90deg, #a2c3d00e 1px, transparent 1px) center / 32px 32px,
+    linear-gradient(#a2c3d00e 1px, transparent 1px) center / 32px 32px,
+    radial-gradient(ellipse at 50% 41%, #253d50 0%, #152736 49%, #101c28 87%);
+  box-shadow: 0 14px 42px #02060b73;
+}
+
+.scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.scene canvas:active { cursor: grabbing; }
+#mesh { pointer-events: none; }
+#view:focus-visible { outline-offset: -4px; }
+
+.scene-bar {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  right: 18px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.scene-name {
+  color: #c1d0da;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.scene-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 8px;
+  margin-left: auto;
+  pointer-events: auto;
+}
+
+.scene-actions .rebuild-button {
+  min-height: 43px;
+  border-color: #6590a1;
+  color: #e0f6fd;
+}
+
+.camera {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #4a6271;
+  border-radius: 9px;
+  background: #101c28f5;
+  pointer-events: auto;
+}
+
+.camera button {
+  min-height: 33px;
+  padding: 3px 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #b9c9d4;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.camera button:hover { color: white; }
+.camera button[aria-pressed="true"] {
+  border-color: #5b8b9d;
+  color: #e9f9fc;
+  background: #264252;
+}
+
+.labels, .scene-controls { position: absolute; inset: 0; pointer-events: none; }
+
+.scene-label {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid #5a7182;
+  border-radius: 7px;
+  background: #101d29f5;
+  color: #f3f7fa;
+  box-shadow: 0 3px 11px #03091160;
+  font-size: clamp(12px, 1.02vw, 16px);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.scene-label[hidden] { display: none; }
+.scene-label i, .legend i {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.scene-control {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.scene-control:hover:not(:disabled) {
+  border-color: #f2f8e8;
+  background: #ffffff20;
+  box-shadow: 0 0 12px #e4f1ca6b;
+}
+
+.legend {
+  position: absolute;
+  bottom: 13px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  flex-wrap: wrap;
+  gap: 7px 19px;
+  padding: 8px 11px;
+  border: 1px solid #526b79;
+  border-radius: 8px;
+  background: #0f1d2be8;
+  color: #e6edf2;
+  font-size: clamp(12px, 1.02vw, 15px);
+  font-weight: 620;
+  pointer-events: none;
+}
+
+.legend span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.cyan { color: var(--cyan); }
+.amber { color: var(--amber); }
+.rust { color: var(--rust); }
+.core { color: var(--core); }
+.steel { color: #b4ccd5; }
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid #354a5a;
+  border-radius: 15px;
+  background: linear-gradient(166deg, #192b39, var(--panel) 43%);
+}
+
+.sidebar h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(20px, 1.85vw, 27px);
+  font-weight: 720;
+  letter-spacing: -.036em;
+  line-height: 1.18;
+}
+
+.state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  color: #c0d0d9;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.state::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: #8094a4;
+}
+
+.state.active::before { background: var(--mint); box-shadow: 0 0 0 3px #a4e0c82b; }
+.state.complete { color: var(--core); }
+.state.complete::before { background: var(--core); box-shadow: 0 0 0 3px #ebc9a231; }
+
+.indicators { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+
+.indicators span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid #3c5160;
+  border-radius: 6px;
+  background: #152431;
+  color: #adc0cb;
+  font-size: 12px;
+  font-weight: 620;
+  white-space: nowrap;
+}
+
+.indicators span::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+#bit-drill.on { color: #ffd2ba; background: #493025; border-color: #a26b50; }
+#bit-air.on { color: #b8effc; background: #163647; border-color: #568c9f; }
+
+.mode-group { display: grid; gap: 6px; }
+
+.mode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 37px;
+  padding: 6px 9px;
+  border: 1px solid #3d5567;
+  border-radius: 7px;
+  background: #162735;
+  color: #d4e0e8;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 660;
+}
+
+.mode:hover { border-color: #7ea0b4; }
+.mode[aria-pressed="true"] { border-color: #74abbb; background: #223f4d; color: #effbff; }
+.mode-symbol { width: 19px; flex: none; color: var(--cyan); font-size: 16px; text-align: center; line-height: 1; }
+.mode-description { min-height: 40px; margin: 0; color: #b7c9d4; font-size: 13px; line-height: 1.45; }
+
+.controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.primary, .secondary { min-height: 41px; border-radius: 7px; font-size: 14px; font-weight: 720; }
+.primary { border: 1px solid #a4e0c8; background: var(--mint); color: #142a27; }
+.primary:hover:not(:disabled) { background: #bef2dd; }
+.secondary { border: 1px solid #526777; color: #e8f0f4; background: #182a38; }
+.secondary:hover:not(:disabled) { border-color: #86a7b9; background: #253d4d; }
+
+.core-progress {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid #776346;
+  border-radius: 8px;
+  background: #28251f;
+  color: #f2e1cb;
+}
+
+.core-progress-label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.core-progress-value {
+  color: var(--core);
+  font-size: clamp(16px, 1.6vw, 24px);
+  font-weight: 740;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.core-progress progress {
+  display: block;
+  appearance: none;
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: #453b30;
+  color: var(--core);
+}
+
+.core-progress progress::-webkit-progress-bar { background: #453b30; }
+.core-progress progress::-webkit-progress-value { background: var(--core); }
+.core-progress progress::-moz-progress-bar { background: var(--core); }
+
+.tempo { padding-top: 11px; border-top: 1px solid #405361; }
+
+.tempo-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #d1dce4;
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.tempo output { color: var(--cyan); font-variant-numeric: tabular-nums; }
+input[type="range"] { width: 100%; margin: 7px 0 0; accent-color: var(--cyan); }
+.help { margin: auto 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.caption { margin: 11px 2px 0; color: var(--muted); font-size: 12px; }
+
+.sample-mode #particle-panel { display: none; }
+#particle-panel { border-block: 1px solid #455668; padding: 9px 0; font-size: 13px; }
+#particle-panel summary { color: #edc0ff; cursor: pointer; font-weight: 700; padding: 3px 0; }
+.particle-fields { margin: 12px 0; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.particle-fields label { display: flex; flex-direction: column; justify-content: space-between; gap: 4px; }
+.particle-fields select, .particle-fields input { width: 100%; min-width: 0; border-radius: 5px; border: 1px solid #597285; background: #122431; color: #f3f7fa; font: inherit; padding: 5px; }
+#particle-panel p, #particle-panel dl { margin: 9px 0; line-height: 1.4; }
+#particle-panel dl div { display: flex; justify-content: space-between; gap: 6px; }
+#particle-panel dd { margin: 0; font-variant-numeric: tabular-nums; }
+#particle-panel .secondary { padding-inline: 8px; }
+#particle-state { color: #efbdff; font-weight: bold; }
+#particle-marker { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; }
+#particle-marker i { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; background: #e884ff; border: 2px solid white; box-shadow: 0 0 0 2px #482256; }
+#particle-marker b { position: absolute; left: 10px; top: -10px; background: #291b34; padding: 2px 6px; border-radius: 4px; color: #f6d9ff; font-size: 12px; white-space: nowrap; }
+#particle-camera-note { color: #ffce91; }
+
+.geometry-summary { padding-top: 11px; border-top: 1px solid #405361; }
+.geometry-summary dl { display: grid; gap: 5px; margin: 0; font-size: 12px; }
+.geometry-summary dl div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.geometry-summary dt { color: var(--muted); }
+.geometry-summary dd { margin: 0; color: var(--cyan); font-variant-numeric: tabular-nums; text-align: right; }
+.geometry-summary dl .depth-reading { grid-template-columns: minmax(0, 1fr); gap: 1px; }
+.depth-reading dd { text-align: left; }
+.geometry-summary dd, .core-progress-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.geometry-dialog {
+  width: min(710px, 100% - 24px);
+  max-height: calc(100% - 24px);
+  padding: clamp(16px, 3vw, 28px);
+  border: 1px solid #527183;
+  border-radius: 15px;
+  color: var(--ink);
+  background: linear-gradient(145deg, #1c3040, var(--panel) 56%);
+  box-shadow: 0 24px 80px #030811b5;
+}
+
+.geometry-dialog::backdrop { background: #07101bdd; backdrop-filter: blur(4px); }
+.geometry-dialog h2 { margin: 0; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.035em; line-height: 1.1; }
+.geometry-dialog p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+.geometry-dialog fieldset { min-width: 0; margin: 16px 0 0; padding: 0; border: 0; }
+.geometry-dialog legend { margin-bottom: 6px; padding: 0; color: var(--cyan); font-size: 12px; font-weight: 700; }
+.geometry-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.geometry-field { display: grid; align-content: space-between; gap: 4px; color: #dce7ee; font-size: 12px; }
+.geometry-field span { display: block; }
+.geometry-field input {
+  width: 100%; min-height: 36px; padding: 6px 9px; border: 1px solid #4c6779; border-radius: 6px;
+  color: var(--ink); background: var(--panel-deep); font-size: 15px; font-variant-numeric: tabular-nums;
+}
+.geometry-field input[aria-invalid="true"] { border-color: var(--rust); }
+.geometry-interval { display: block; margin-top: 8px; color: var(--cyan); font-size: 13px; font-variant-numeric: tabular-nums; }
+.geometry-interval[hidden] { display: none; }
+.geometry-dialog .geometry-error { margin-top: 12px; color: #ffba9a; }
+.geometry-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.geometry-actions button { padding: 5px 12px; }
+.geometry-actions #geometry-defaults { margin-right: auto; }
+
+@media (max-width: 480px) {
+  .geometry-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .geometry-actions #geometry-defaults { margin-right: 0; }
+}
+
+.presentation .top-inner, .presentation .wrap { width: calc(100% - 36px); }
+.presentation .top-inner { min-height: 47px; }
+.presentation .wrap { padding-top: 12px; }
+.presentation h1 { font-size: clamp(30px, 3.2vw, 54px); }
+.presentation .intro { margin-bottom: 12px; }
+.presentation .scene { min-height: clamp(485px, calc(100svh - 245px), 1300px); }
+
+@media (max-height: 800px) and (min-width: 761px) {
+  .wrap { padding-top: 13px; padding-bottom: 9px; }
+  h1 { font-size: clamp(32px, 4vw, 50px); }
+  .intro { margin-bottom: 12px; }
+  .sidebar { gap: 11px; padding-block: 14px; }
+  .sidebar h2 { font-size: 21px; }
+}
+
+@media (max-width: 1060px) {
+  .top-inner, .wrap { width: calc(100% - 36px); }
+  .layout { grid-template-columns: minmax(0, 1fr) 250px; gap: 11px; }
+  .sidebar { padding: 15px; gap: 13px; }
+  .camera button { padding-inline: 8px; }
+  .scene-name { font-size: 10px; }
+  .scene-label { padding: 5px 8px; }
+}
+
+@media (max-width: 760px) {
+  .top-inner, .wrap, .presentation .top-inner, .presentation .wrap { width: calc(100% - 24px); }
+  .top-inner { min-height: 50px; }
+  .top-note { display: none; }
+  .wrap { padding-top: 17px; }
+  .intro { margin-bottom: 13px; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .scene, .presentation .scene { min-height: clamp(430px, 66svh, 640px); border-radius: 12px; }
+  .sidebar { border-radius: 12px; }
+  .scene-bar { top: 10px; left: 10px; right: 10px; }
+  .scene-name { display: none; }
+  .camera button { font-size: 12px; }
+  .scene-label { padding: 4px 6px; gap: 5px; font-size: 11px; }
+  .scene-label i, .legend i { width: 7px; height: 7px; }
+  .legend { left: 9px; right: 9px; bottom: 9px; max-width: calc(100% - 18px); gap: 5px 11px; padding: 6px 8px; font-size: 11px; }
+  .mode-group { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mode { justify-content: center; gap: 4px; padding-inline: 4px; font-size: 11px; }
+  .mode-symbol { width: auto; font-size: 13px; }
+  .mode-description { min-height: 0; }
+  .screen-button { padding-inline: 8px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <span class="brand-symbol" aria-hidden="true">⤓</span>
+      <span>Проект «Кудряшов»</span>
+      <span class="top-note">Автономная демонстрация</span>
+    </div>
+    <button id="presentation" class="screen-button" type="button" aria-pressed="false">
+      <span class="screen-icon" aria-hidden="true">⛶</span><span id="presentation-label">Режим доклада</span>
+    </button>
+  </div>
+</header>
+<main class="wrap">
+  <nav class="page-nav" aria-label="Разделы проекта">
+    <a href="#model" data-page="model" aria-current="page">3D-модель</a>
+    <a href="#calculation" data-page="calculation">Расчёт Кудряшова</a>
+    <a href="#formulas" data-page="formulas">Формулы</a>
+  </nav>
+  <section id="model" aria-labelledby="model-title">
+  <div class="intro"><div><h1 id="model-title">Бурение с продувкой</h1><p>От подачи воздуха на площадке до отбора керна на забое</p></div></div>
+  <div class="layout">
+    <section class="scene" id="scene" aria-label="Интерактивный разрез скважины">
+      <canvas id="mesh" aria-hidden="true"></canvas>
+      <canvas id="view" tabindex="0" aria-label="Трёхмерная скважина. Стрелки влево и вправо вращают сцену на 360 градусов, вверх и вниз меняют наклон. Плюс и минус меняют масштаб."></canvas>
+      <div id="particle-marker" aria-hidden="true" hidden><i></i><b id="particle-tag"></b></div>
+      <div class="scene-bar" id="scene-bar">
+        <span class="scene-name" id="scene-name">Продольный разрез</span>
+        <div class="scene-actions" role="group" aria-label="Меню скважины">
+          <div class="camera" role="group" aria-label="Ракурс">
+            <button type="button" data-view="yard" aria-keyshortcuts="1" aria-pressed="false" title="Площадка · клавиша 1">Площадка</button>
+            <button type="button" data-view="overview" aria-keyshortcuts="2" aria-pressed="true" title="Разрез · клавиша 2">Разрез</button>
+            <button type="button" data-view="bit" aria-keyshortcuts="3" aria-pressed="false" title="Забой · клавиша 3">Забой</button>
+          </div>
+          <button id="edit-geometry" class="screen-button rebuild-button" type="button" aria-haspopup="dialog" aria-controls="geometry-dialog">Перестроить 3D</button>
+          <a id="close-sample" class="screen-button page-action" href="#model" hidden>Мои параметры</a>
+        </div>
+      </div>
+      <div class="labels" aria-hidden="true">
+        <span id="label-feed" class="scene-label"><i class="cyan"></i>Воздух к забою</span>
+        <span id="label-return" class="scene-label"><i class="amber"></i><span id="return-label">Затрубный зазор</span></span>
+        <span id="label-casing" class="scene-label"><i class="steel"></i>Обсадная труба</span>
+        <span id="label-receiver" class="scene-label"><i class="steel"></i>Керноприёмник</span>
+        <span id="label-core" class="scene-label"><i class="core"></i>Керн</span>
+        <span id="label-bit" class="scene-label"><i class="rust"></i>Коронка</span>
+        <span id="label-compressor" class="scene-label"><i class="cyan"></i>Компрессор</span>
+        <span id="label-collector" class="scene-label"><i class="amber"></i>Шламоуловитель</span>
+        <span id="label-exhaust" class="scene-label"><i class="cyan"></i>Выход воздуха</span>
+        <span id="label-P1" class="scene-label" hidden></span>
+        <span id="label-P2" class="scene-label" hidden></span>
+        <span id="label-P3" class="scene-label" hidden></span>
+        <span id="label-P4" class="scene-label" hidden></span>
+        <span id="label-Pres" class="scene-label" hidden></span>
+      </div>
+      <div class="scene-controls" role="group" aria-label="Кнопки на пульте буровой">
+        <button id="scene-start" class="scene-control" type="button" aria-label="Пуск на пульте" title="Пуск" disabled hidden></button>
+        <button id="scene-stop" class="scene-control" type="button" aria-label="Стоп на пульте" title="Стоп" hidden></button>
+        <button id="scene-reset" class="scene-control" type="button" aria-label="Сброс на пульте" title="Сброс" hidden></button>
+      </div>
+      <div class="legend" aria-label="Обозначения на разрезе">
+        <span><i class="cyan"></i>Воздух</span>
+        <span><i class="amber"></i>Шлам</span>
+        <span><i class="core"></i>Керн</span>
+        <span><i class="rust"></i>Коронка</span>
+      </div>
+    </section>
+    <aside class="sidebar" aria-label="Управление демонстрацией">
+      <div id="sample-info" class="sample-info" hidden>
+        <strong>Расчётный случай Кудряшова</strong>
+        <p>Метки показывают абсолютные давления при конечной глубине <span data-value="H"></span> м.</p>
+        <a href="#calculation">Все результаты расчёта</a>
+      </div>
+      <div><h2>Управление установкой</h2><div id="status" class="state" role="status">Загрузка модели</div></div>
+      <div class="indicators" aria-label="Индикаторы установки"><span id="bit-drill">Коронка</span><span id="bit-air">Подача воздуха</span></div>
+      <div class="mode-group" role="group" aria-label="Процесс">
+        <button type="button" class="mode" data-mode="both" aria-pressed="true"><span class="mode-symbol" aria-hidden="true">⇅</span>Бурение + продувка</button>
+        <button type="button" class="mode" data-mode="drill" aria-pressed="false"><span class="mode-symbol" aria-hidden="true">⟳</span>Бурение</button>
+        <button type="button" class="mode" data-mode="air" aria-pressed="false"><span class="mode-symbol" aria-hidden="true">↑</span>Продувка</button>
+      </div>
+      <p class="mode-description" id="mode-description">Коронка углубляется, и керн входит в керноприёмник. Воздух выносит шлам по зазору снаружи колонны.</p>
+      <div class="controls"><button id="play" class="primary" type="button" disabled>Пуск</button><button id="stop" class="secondary" type="button" disabled>Стоп</button><button id="reset" class="secondary" type="button" disabled>Сброс</button></div>
+      <div class="core-progress"><div class="core-progress-label"><label for="core-progress">Пройдено</label><span id="core-progress-value" class="core-progress-value" aria-hidden="true"></span></div><progress id="core-progress" value="0" max="100"></progress></div>
+      <div class="tempo"><label class="tempo-label" for="tempo">Темп анимации <output id="tempo-value" for="tempo">×1</output></label><input id="tempo" type="range" min="0.5" max="2" value="1" step="0.25"></div>
+      <details id="particle-panel">
+        <summary>Витание частицы в затрубном зазоре</summary>
+        <p>Задайте условия в сечении. Фиолетовая метка показывает движение одной частицы относительно скважины. Пуск установки для этого опыта не требуется.</p>
+        <div class="particle-fields">
+          <label>Участок<select id="particle-section"><option value="pipe">Бурильная труба</option><option value="barrel">Колонковая труба</option></select></label>
+          <label>Диаметр частицы, мм<input id="particle-diameter" type="text" inputmode="decimal" value="1"></label>
+          <label>Плотность частицы, кг/м³<input id="particle-density" type="text" inputmode="decimal"></label>
+          <label>Давление абсолютное, МПа<input id="particle-pressure" type="text" inputmode="decimal"></label>
+          <label>Температура воздуха, К<input id="particle-temperature" type="text" inputmode="decimal"></label>
+          <label>Расход при этих p и T, м³/мин<input id="particle-flow" type="text" inputmode="decimal" value="3"></label>
+        </div>
+        <p id="particle-state" role="status"></p>
+        <dl id="particle-results">
+          <div><dt>Радиальный зазор</dt><dd id="particle-gap"></dd></div>
+          <div><dt>Скорость воздуха ↑</dt><dd id="particle-air"></dd></div>
+          <div><dt>Скорость витания</dt><dd id="particle-terminal"></dd></div>
+          <div><dt>Скорость частицы ↑</dt><dd id="particle-net"></dd></div>
+          <div><dt>Расход витания</dt><dd id="particle-critical"></dd></div>
+        </dl>
+        <button type="button" class="secondary" id="particle-balance">Установить расход витания</button>
+        <p id="particle-camera-note" hidden></p>
+        <p class="help">Размер метки и темп анимации условны. Положительная скорость направлена вверх. При смене участка сохраняются введённые расход, давление и температура.</p>
+        <details><summary>Как рассчитано</summary>
+          <p>Площадь кольца A = π(D² − Dт²)/4. Средняя скорость воздуха u = Q/(60A) при Q в м³/мин и диаметрах труб в метрах. Расход задан непосредственно на выбранном участке.</p>
+          <p>Для сферы диаметра d скорость витания w найдена из баланса веса, плавучести и сопротивления: 3ρC<sub>D</sub>w² = 4gd(ρч − ρ). Плотность воздуха ρ = p/(RT), вязкость рассчитана по закону Сазерленда. Сопротивление сферы рассчитано по корреляции Clift и Gauvin: C<sub>D</sub> = (24/Re)(1 + 0,15 Re<sup>0,687</sup>) + 0,42/(1 + 42500/Re<sup>1,16</sup>), где Re = ρwd/μ. Установившаяся скорость частицы относительно стенки v = u − w. При v = 0 расход витания Q* = 60Aw.</p>
+          <p>Приняты открытый вертикальный ствол, гладкое сечение, одна сферическая частица и равномерный восходящий поток. Неровность шлама, местные сужения, влияние стенок и взаимодействие частиц исключены из расчёта. Чем ближе размер частицы к зазору, тем существеннее это ограничение. Расход витания относится к отдельной частице и не задаёт расход очистки скважины.</p>
+          <a href="https://ntrs.nasa.gov/citations/20220008729" target="_blank" rel="noopener">Источник корреляции сопротивления</a>
+        </details>
+      </details>
+      <div class="geometry-summary">
+        <dl>
+          <div class="depth-reading"><dt>Текущая / конечная глубина</dt><dd id="current-depth"></dd></div>
+          <div><dt>Ø ствола / бурильной трубы</dt><dd id="diameter-summary"></dd></div>
+          <div><dt>Колонковая труба / глубина</dt><dd id="barrel-summary"></dd></div>
+          <div><dt>Зазор у колонковой трубы</dt><dd id="clearance-summary"></dd></div>
+        </dl>
+      </div>
+      <p class="help">Перетащи сцену для поворота на 360°, прокрути колесо для приближения. Клавиши 1, 2 и 3 возвращают исходный обзор площадки, разреза и забоя.</p>
+    </aside>
+  </div>
+  <p class="caption">На общем разрезе продольные пропорции сохранены. В ракурсе «Забой» нижний участок увеличен для просмотра деталей. Диаметры увеличены, темп движения условный.</p>
+  <noscript><p class="caption">Для запуска модели включи JavaScript в браузере.</p></noscript>
+  </section>
+  <section class="report" id="calculation" aria-labelledby="calculation-title" hidden>
+    <div class="intro"><h1 id="calculation-title">Расчёт Кудряшова</h1><p>Исходный пример из main_file.py для вертикальной скважины. Все результаты рассчитаны при глубине <span data-value="H"></span> м.</p></div>
+    <div class="report-grid">
+      <div class="report-card">
+        <h2>Результаты расчёта</h2>
+        <dl class="result-key">
+          <div><dt>Расход воздуха</dt><dd><span data-value="Q" data-digits="3"></span> <small>м³/мин</small></dd></div>
+          <div><dt>Давление компрессора</dt><dd><span data-value="Pres" data-digits="3"></span> <small>МПа</small></dd></div>
+          <div><dt>Мощность по исходной формуле М1</dt><dd><span data-value="N_kw" data-digits="2"></span> <small>кВт</small></dd></div>
+        </dl>
+        <table class="report-table" aria-label="Абсолютные давления в скважине">
+          <thead><tr><th scope="col">Точка в скважине</th><th scope="col">Давление, МПа</th></tr></thead>
+          <tbody>
+            <tr><th scope="row"><b class="point-name">P₁</b> Стык труб, затрубное пространство</th><td class="result-number" data-value="P1" data-digits="3"></td></tr>
+            <tr><th scope="row"><b class="point-name">P₂</b> У забоя, затрубное пространство</th><td class="result-number" data-value="P2" data-digits="3"></td></tr>
+            <tr><th scope="row"><b class="point-name">P₃</b> Стык труб, внутренний канал</th><td class="result-number" data-value="P3" data-digits="3"></td></tr>
+            <tr><th scope="row"><b class="point-name">P₄</b> Вход воздуха в бурильную колонну</th><td class="result-number" data-value="P4" data-digits="3"></td></tr>
+          </tbody>
+        </table>
+        <h3>Расход и скорости</h3>
+        <table class="report-table" aria-label="Массовый расход и расчётные скорости">
+          <tbody>
+            <tr><th scope="row">Массовый расход воздуха</th><td class="result-number"><span data-value="G" data-digits="5"></span> кг/с</td></tr>
+            <tr><th scope="row">Скорость в затрубном пространстве бурильной трубы</th><td class="result-number"><span data-value="vkol" data-digits="2"></span> м/с</td></tr>
+            <tr><th scope="row">Скорость внутри бурильной трубы</th><td class="result-number"><span data-value="vbt" data-digits="2"></span> м/с</td></tr>
+          </tbody>
+        </table>
+        <div class="report-links">
+          <a class="screen-button page-action" href="#case">Показать расчёт в 3D</a>
+          <a class="screen-button page-action" href="#formulas">Посмотреть формулы</a>
+        </div>
+      </div>
+      <div class="report-card">
+        <h2>Исходные данные</h2>
+        <table class="report-table" aria-label="Исходные размеры скважины и параметры бурения">
+          <tbody>
+            <tr><th scope="row">Глубина / наклон к горизонту</th><td><span data-value="H"></span> м / <span data-value="alpha"></span>°</td></tr>
+            <tr><th scope="row">Диаметр скважины</th><td><span data-value="bore"></span> мм</td></tr>
+            <tr><th scope="row">Бурильная труба, наружный / внутренний Ø</th><td><span data-value="pipeOuter"></span> / <span data-value="pipeInner"></span> мм</td></tr>
+            <tr><th scope="row">Колонковая труба, наружный / внутренний Ø</th><td><span data-value="barrelOuter"></span> / <span data-value="barrelInner"></span> мм</td></tr>
+            <tr><th scope="row">Длина колонковой трубы / диаметр керна</th><td><span data-value="barrelLength"></span> м / <span data-value="core"></span> мм</td></tr>
+            <tr><th scope="row">Длина звена / диаметр канала соединения</th><td><span data-value="lt"></span> м / <span data-value="d3_mm"></span> мм</td></tr>
+            <tr><th scope="row">Выход керна / плотность породы</th><td><span data-value="bk"></span>% / <span data-value="rho_rock"></span> кг/м³</td></tr>
+            <tr><th scope="row">Механическая скорость проходки</th><td><span data-value="vm"></span> м/ч</td></tr>
+            <tr><th scope="row">Требуемая скорость в затрубном пространстве</th><td><span data-value="v1"></span> м/с</td></tr>
+            <tr><th scope="row">Температура в скважине / КПД компрессора</th><td><span data-value="T"></span> К / <span data-value="eta"></span></td></tr>
+          </tbody>
+        </table>
+        <details><summary>Коэффициенты и константы</summary>
+          <p>Для муфтово-замкового соединения a₀ = <span data-value="a0"></span>. Коэффициенты k = <span data-value="k"></span>, k₁ = <span data-value="k1"></span>, kᵣ = <span data-value="kr"></span>, γ = <span data-value="gamma"></span>.</p>
+          <p>P₀ = <span data-value="P0"></span> Па, R = <span data-value="R"></span> Дж/(кг·К), g = <span data-value="g"></span> м/с². Расход Q приведён к P₀ и температуре 273 К.</p>
+        </details>
+        <p>3D показывает геометрию этого примера и точки расчёта. Параметры настраиваемой модели хранятся отдельно.</p>
+      </div>
+    </div>
+  </section>
+  <section class="report" id="formulas" aria-labelledby="formulas-title" hidden>
+    <div class="intro"><h1 id="formulas-title">Формулы расчёта</h1><p>Методика Кудряшова и оценка электрической мощности для сравнения режимов продувки.</p></div>
+    <div class="report-grid">
+<section class="report-card"><h2>Сечения и длины</h2><div class="formula-line"><math><mrow><msub><mi>F</mi><mn>1</mn></msub><mo>=</mo></mrow><mfrac><mrow><mi>π</mi><mrow><mo>(</mo><msup><mi>D</mi><mn>2</mn></msup><mo>−</mo><msup><mi>d</mi><mn>2</mn></msup><mo>)</mo></mrow></mrow><mn>4</mn></mfrac></math></div>
+<div class="formula-line"><math><mrow><msub><mi>F</mi><mn>2</mn></msub><mo>=</mo></mrow><mfrac><mrow><mi>π</mi><msup><msub><mi>d</mi><mn>1</mn></msub><mn>2</mn></msup></mrow><mn>4</mn></mfrac></math></div>
+<div class="formula-line"><math><mrow><msub><mi>F</mi><mn>3</mn></msub><mo>=</mo></mrow><mfrac><mrow><mi>π</mi><mrow><mo>(</mo><msup><mi>D</mi><mn>2</mn></msup><mo>−</mo><msup><msub><mi>d</mi><mi>h</mi></msub><mn>2</mn></msup><mo>)</mo></mrow></mrow><mn>4</mn></mfrac></math></div>
+<div class="formula-line"><math><mrow><msub><mi>F</mi><mn>4</mn></msub><mo>=</mo></mrow><mfrac><mrow><mi>π</mi><mrow><mo>(</mo><msup><msub><mi>d</mi><mi>b</mi></msub><mn>2</mn></msup><mo>−</mo><msup><msub><mi>d</mi><mi>k</mi></msub><mn>2</mn></msup><mo>)</mo></mrow></mrow><mn>4</mn></mfrac></math></div>
+<div class="formula-line"><math><mrow><mi>L</mi><mo>=</mo></mrow><mrow><mi>H</mi><mo>−</mo><msub><mi>l</mi><mi>k</mi></msub></mrow></math></div>
+<p>D обозначает диаметр скважины, d и d₁ обозначают наружный и внутренний диаметры бурильной трубы, dₕ и dᵦ обозначают наружный и внутренний диаметры колонковой трубы. dₖ обозначает диаметр керна, H обозначает глубину, lₖ обозначает длину колонковой трубы.</p>
+<p>F₁ и F₃ обозначают затрубные сечения вокруг бурильной и колонковой труб соответственно. F₂ обозначает сечение внутри бурильной трубы, F₄ обозначает сечение канала между колонковой трубой и керном.</p></section>
+<section class="report-card"><h2>Расход воздуха и поток шлама</h2><div class="formula-line"><math><mrow><mi>Q</mi><mo>=</mo></mrow><mrow><mn>47,1</mn><mi>k</mi><msub><mi>k</mi><mn>1</mn></msub></mrow><mrow><mo>(</mo><msup><mi>D</mi><mn>2</mn></msup><mo>−</mo><msup><mi>d</mi><mn>2</mn></msup><mo>)</mo></mrow><msub><mi>v</mi><mn>1</mn></msub></math></div>
+<div class="formula-line"><math><mrow><msub><mi>ρ</mi><mn>0</mn></msub><mo>=</mo></mrow><mfrac><msub><mi>P</mi><mn>0</mn></msub><mrow><mi>R</mi><mo>·</mo><mn>273</mn></mrow></mfrac></math></div>
+<div class="formula-line"><math><mrow><mi>G</mi><mo>=</mo></mrow><mfrac><mrow><mi>Q</mi><msub><mi>ρ</mi><mn>0</mn></msub></mrow><mn>60</mn></mfrac></math></div>
+<div class="formula-line"><math><mrow><msub><mi>G</mi><mi>ш</mi></msub><mo>=</mo></mrow><mfrac><mrow><mi>π</mi><mrow><mo>(</mo><msup><mi>D</mi><mn>2</mn></msup><mo>−</mo><mfrac><msub><mi>b</mi><mi>k</mi></msub><mn>100</mn></mfrac><msup><msub><mi>d</mi><mi>k</mi></msub><mn>2</mn></msup><mo>)</mo></mrow></mrow><mn>4</mn></mfrac><mfrac><mrow><msub><mi>ρ</mi><mi>п</mi></msub><msub><mi>v</mi><mi>m</mi></msub></mrow><mn>3600</mn></mfrac></math></div>
+<div class="formula-line"><math><mrow><mi>ν</mi><mo>=</mo></mrow><mfrac><msub><mi>G</mi><mi>ш</mi></msub><mi>G</mi></mfrac></math></div>
+<p>Q обозначает объёмный расход воздуха, м³/мин, при P₀ и 273 К. G и G<sub>ш</sub> обозначают массовые расходы воздуха и шлама, кг/с, а ν показывает их массовое отношение (шлам к воздуху). k и k₁ учитывают неравномерность скорости и снижение подъёмной силы. v₁ задаёт требуемую скорость воздуха в затрубном пространстве, bₖ задаёт выход керна в процентах, ρ<sub>п</sub> задаёт плотность породы, vₘ задаёт механическую скорость проходки в м/ч.</p></section>
+<section class="report-card"><h2>Сопротивление и соединения</h2><div class="formula-line"><math><mrow><msub><mi>D</mi><mi>e1</mi></msub><mo>=</mo></mrow><mrow><mi>D</mi><mo>−</mo><mi>d</mi></mrow></math></div>
+<div class="formula-line"><math><mrow><msub><mi>D</mi><mi>e2</mi></msub><mo>=</mo></mrow><msub><mi>d</mi><mn>1</mn></msub></math></div>
+<div class="formula-line"><math><mrow><msub><mi>D</mi><mi>e3</mi></msub><mo>=</mo></mrow><mrow><mi>D</mi><mo>−</mo><msub><mi>d</mi><mi>h</mi></msub></mrow></math></div>
+<div class="formula-line"><math><mrow><msub><mi>D</mi><mi>e4</mi></msub><mo>=</mo></mrow><mrow><msub><mi>d</mi><mi>b</mi></msub><mo>−</mo><msub><mi>d</mi><mi>k</mi></msub></mrow></math></div>
+<div class="formula-line"><math><mrow><msub><mi>λ</mi><mi>i</mi></msub><mo>=</mo></mrow><mfrac><mn>0,009407</mn><msup><msub><mi>D</mi><mi>ei</mi></msub><mfrac><mn>1</mn><mn>3</mn></mfrac></msup></mfrac></math></div>
+<div class="formula-line"><math><mrow><msub><mi>a</mi><mi>i</mi></msub><mo>=</mo></mrow><mfrac><mrow><msup><mi>G</mi><mn>2</mn></msup><mrow><mi>R</mi><mi>T</mi></mrow></mrow><mrow><msub><mi>D</mi><mi>ei</mi></msub><msup><msub><mi>F</mi><mi>i</mi></msub><mn>2</mn></msup></mrow></mfrac></math></div>
+<div class="formula-line"><math><mrow><mi>b</mi><mo>=</mo></mrow><mfrac><mrow><mrow><mi>g</mi></mrow><mi>sin</mi><mi>α</mi></mrow><mrow><mn>2</mn><mi>R</mi><mi>T</mi></mrow></mfrac></math></div>
+<div class="formula-line"><math><mrow><msub><mi>n</mi><mi>c</mi></msub><mo>=</mo></mrow><mrow><mo>⌈</mo><mfrac><mi>L</mi><msub><mi>l</mi><mi>t</mi></msub></mfrac><mo>⌉</mo></mrow></math></div>
+<div class="formula-line"><math><mrow><mi>ξ</mi><mo>=</mo></mrow><msub><mi>a</mi><mn>0</mn></msub><msup><mrow><mo>(</mo><msup><mrow><mo>(</mo><mfrac><msub><mi>d</mi><mn>1</mn></msub><msub><mi>d</mi><mn>3</mn></msub></mfrac><mo>)</mo></mrow><mn>2</mn></msup><mrow><mo>−</mo><mn>1</mn></mrow><mo>)</mo></mrow><mn>2</mn></msup></math></div>
+<div class="formula-line"><math><mrow><msub><mi>l</mi><mi>e</mi></msub><mo>=</mo></mrow><mfrac><mrow><msub><mi>d</mi><mn>1</mn></msub><msub><mi>n</mi><mi>c</mi></msub><mi>ξ</mi></mrow><msub><mi>λ</mi><mn>2</mn></msub></mfrac></math></div>
+<p>Для участка i от 1 до 4 величина Dₑᵢ обозначает гидравлический диаметр, а λᵢ обозначает коэффициент сопротивления. T задаёт температуру воздуха в скважине в кельвинах. Угол α измеряется от горизонта и подаётся в синус в радианах. lₜ и d₃ обозначают длину звена и диаметр канала соединения. a₀ зависит от типа соединения. lₑ учитывает потери на соединениях эквивалентной длиной.</p></section>
+<section class="report-card"><h2>Давление на четырёх участках</h2><div class="formula-line"><math><mrow><msub><mi>p</mi><mo>↑</mo></msub><mo>=</mo></mrow><mfrac><mrow><msqrt><mrow><msup><mi>p</mi><mn>2</mn></msup><mrow><mo>+</mo><mi>λ</mi></mrow><mrow><mo>(</mo><mrow><mn>1</mn><mo>+</mo><msub><mi>k</mi><mi>r</mi></msub><mi>ν</mi></mrow><mo>)</mo></mrow><mrow><mi>a</mi><mi>l</mi></mrow></mrow></msqrt><mrow><mo>+</mo><mi>p</mi></mrow><mrow><mo>(</mo><mrow><mn>1</mn><mo>+</mo><mi>ν</mi></mrow><mo>)</mo></mrow><mrow><mi>b</mi><mi>l</mi></mrow></mrow><mrow><mrow><mn>1</mn><mo>−</mo></mrow><mrow><mo>(</mo><mrow><mn>1</mn><mo>−</mo><mi>ν</mi></mrow><mo>)</mo></mrow><mrow><mi>b</mi><mi>l</mi></mrow></mrow></mfrac></math></div>
+<div class="formula-line"><math><mrow><msub><mi>p</mi><mo>↓</mo></msub><mo>=</mo></mrow><mrow><msqrt><mrow><msup><mi>p</mi><mn>2</mn></msup><mo>+</mo><mfrac><mrow><mrow><mi>λ</mi><mi>a</mi></mrow><mrow><mo>(</mo><mrow><mi>l</mi><mo>+</mo><msub><mi>l</mi><mi>e</mi></msub></mrow><mo>)</mo></mrow></mrow><mrow><mo>(</mo><mrow><mn>1</mn><mo>+</mo><mi>b</mi><mi>l</mi></mrow><mo>)</mo></mrow></mfrac></mrow></msqrt><mo>−</mo><mfrac><mrow><mi>p</mi><mi>b</mi><mi>l</mi></mrow><mrow><mo>(</mo><mrow><mn>1</mn><mo>+</mo><mi>b</mi><mi>l</mi></mrow><mo>)</mo></mrow></mfrac></mrow></math></div>
+<table class="report-table" aria-label="Порядок расчёта давлений"><thead><tr><th scope="col">Точка</th><th scope="col">Подстановка</th></tr></thead><tbody><tr><th scope="row">P₁</th><td>p↑(P₀, λ₁, a₁, L)</td></tr><tr><th scope="row">P₂</th><td>p↑(P₁, λ₃, a₃, lₖ)</td></tr><tr><th scope="row">P₃</th><td>p↓(P₂, λ₄, a₄, lₖ, 0)</td></tr><tr><th scope="row">P₄</th><td>p↓(P₃, λ₂, a₂, L, lₑ)</td></tr></tbody></table>
+<p>В формулах p↑ и p↓ обозначают давление на конце участка восходящего и нисходящего потока. p обозначает давление на другом конце участка, l обозначает длину участка. В подстановках давления заданы в Па, размеры в метрах. При выводе давления от P₁ до P₄ переводятся в МПа делением на 10⁶. kᵣ учитывает влияние шлама в восходящем потоке.</p></section>
+<section class="report-card formula-wide"><h2>Компрессор и скорости по исходной М1</h2><div class="formula-line"><math><mrow><msub><mi>P</mi><mi>res</mi></msub><mo>=</mo></mrow><mrow><msub><mi>P</mi><mn>4</mn></msub><mo>+</mo><mn>50000</mn></mrow></math></div>
+<div class="formula-line"><math><mrow><mi>N</mi><mo>=</mo></mrow><mfrac><mi>γ</mi><mrow><mi>γ</mi><mo>−</mo><mn>1</mn></mrow></mfrac><mfrac><mrow><msub><mi>P</mi><mn>0</mn></msub><mi>Q</mi></mrow><mrow><mn>60</mn><mi>η</mi></mrow></mfrac><mrow><mo>(</mo><msup><mrow><mo>(</mo><mfrac><msub><mi>P</mi><mi>res</mi></msub><msub><mi>P</mi><mn>0</mn></msub></mfrac><mo>)</mo></mrow><mfrac><mrow><mi>k</mi><mo>−</mo><mn>1</mn></mrow><mi>k</mi></mfrac></msup><mrow><mo>−</mo><mn>1</mn></mrow><mo>)</mo></mrow></math></div>
+<div class="formula-line"><math><mrow><msub><mi>v</mi><mi>кол</mi></msub><mo>=</mo></mrow><mfrac><mi>Q</mi><mrow><mn>60</mn><msub><mi>F</mi><mn>1</mn></msub></mrow></mfrac></math></div>
+<div class="formula-line"><math><mrow><msub><mi>v</mi><mi>бт</mi></msub><mo>=</mo></mrow><mfrac><mi>Q</mi><mrow><mn>60</mn><msub><mi>F</mi><mn>2</mn></msub></mrow></mfrac></math></div>
+<p>В формуле мощности давления заданы в Па. Добавка 50 000 Па соответствует 0,05 МПа. γ обозначает показатель адиабаты воздуха, η обозначает КПД компрессора, N обозначает мощность в ваттах. Скорости рассчитаны по приведённому расходу Q. В этой архивной формуле в показателе степени стоит коэффициент неравномерности k.</p></section>
+<section class="report-card formula-wide" id="compressor-power">
+<h2>Электрическая мощность компрессора</h2>
+<div class="formula-line"><math aria-label="Формула электрической мощности в киловаттах"><msub><mi>N</mi><mtext>эл</mtext></msub><mo>=</mo><mfrac><mi>γ</mi><mrow><mi>γ</mi><mo>−</mo><mn>1</mn></mrow></mfrac><mfrac><mrow><msub><mi>p</mi><mn>1</mn></msub><msub><mi>Q</mi><mn>1</mn></msub></mrow><mrow><mn>60 000</mn><mi>η</mi></mrow></mfrac><mo>[</mo><msup><mrow><mo>(</mo><msub><mi>p</mi><mn>2</mn></msub><mo>/</mo><msub><mi>p</mi><mn>1</mn></msub><mo>)</mo></mrow><mfrac><mrow><mi>γ</mi><mo>−</mo><mn>1</mn></mrow><mi>γ</mi></mfrac></msup><mo>−</mo><mn>1</mn><mo>]</mo></math></div>
+<p>Одноступенчатое сжатие воздуха, γ = 1,4. В формуле p₁ и p₂ обозначают абсолютные давления на входе и выходе компрессора в Па, Q₁ означает объёмный расход на входе в м³/мин. Полный КПД η равен отношению изоэнтропической мощности к электрической мощности привода. Вспомогательное оборудование и холостой ход оценивают отдельно.</p>
+<p>В полях давления вводятся в МПа. Для исходного примера приняты условия на входе 273 К и 0,100 МПа, как при приведении расхода М1. При других условиях пересчитайте расход: Q₁ = Qпр · (pпр/p₁) · (T₁/Tпр), температуры в К. Избыточное давление переводят в абсолютное прибавлением местного атмосферного давления.</p>
+<div id="power-inputs"><div class="geometry-fields">
+<label class="geometry-field">Давление на входе, МПа (абс.)<input id="power-inlet" inputmode="decimal"></label>
+<label class="geometry-field">Часы работы в режиме<input id="power-hours" inputmode="decimal" value="2000"></label>
+<label class="geometry-field">Цена, ₽/кВт·ч<input id="power-price" inputmode="decimal" value="10"></label>
+</div><h3>Исходный режим</h3><div class="geometry-fields">
+<label class="geometry-field">Расход на входе, м³/мин<input id="power-base-flow" inputmode="decimal"></label>
+<label class="geometry-field">Давление на выходе, МПа (абс.)<input id="power-base-pressure" inputmode="decimal"></label>
+<label class="geometry-field">Полный КПД, от 0 до 1 (исключая 0)<input id="power-base-eta" inputmode="decimal"></label>
+</div><p><output id="power-base-result"></output></p><h3>Сравниваемый режим</h3><div class="geometry-fields">
+<label class="geometry-field">Расход на входе, м³/мин<input id="power-alt-flow" inputmode="decimal"></label>
+<label class="geometry-field">Давление на выходе, МПа (абс.)<input id="power-alt-pressure" inputmode="decimal"></label>
+<label class="geometry-field">Полный КПД, от 0 до 1 (исключая 0)<input id="power-alt-eta" inputmode="decimal"></label>
+</div><p><output id="power-alt-result"></output></p></div><p><strong><output id="power-difference" aria-live="polite"></output></strong></p>
+<p>Исходный полный КПД 0,70, часы и цена заданы для примера. Для второго режима введите параметры полного контура. Сравнивайте стоимость при одинаковой проходке и выносе шлама.</p></section>
+    </div>
+  </section>
+</main>
+<dialog id="geometry-dialog" class="geometry-dialog" aria-labelledby="geometry-title">
+  <form id="geometry-form" novalidate>
+    <h2 id="geometry-title">Геометрия скважины</h2>
+    <p>Укажи размеры и построй 3D-разрез. Исходные размеры взяты из расчёта Кудряшова, ход проходки задан для демонстрации.</p>
+    <fieldset>
+      <legend>Глубина проходки и длина трубы</legend>
+      <div class="geometry-fields">
+        <label class="geometry-field"><span>Конечная глубина, м</span><input id="target-depth" name="depth" inputmode="decimal" required autofocus></label>
+        <label class="geometry-field"><span>Углубление за проходку, м</span><input id="pass-distance" name="advance" inputmode="decimal" required></label>
+        <label class="geometry-field"><span>Длина колонковой трубы, м</span><input name="barrelLength" inputmode="decimal" required></label>
+      </div>
+      <output id="geometry-interval" class="geometry-interval" for="target-depth pass-distance" hidden></output>
+    </fieldset>
+    <fieldset>
+      <legend>Ствол и бурильная труба</legend>
+      <div class="geometry-fields">
+        <label class="geometry-field"><span>Диаметр ствола, мм</span><input name="bore" inputmode="decimal" required></label>
+        <label class="geometry-field"><span>Наружный диаметр трубы, мм</span><input name="pipeOuter" inputmode="decimal" required></label>
+        <label class="geometry-field"><span>Внутренний диаметр трубы, мм</span><input name="pipeInner" inputmode="decimal" required></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Колонковая труба и керн</legend>
+      <div class="geometry-fields">
+        <label class="geometry-field"><span>Наружный диаметр трубы, мм</span><input name="barrelOuter" inputmode="decimal" required></label>
+        <label class="geometry-field"><span>Внутренний диаметр трубы, мм</span><input name="barrelInner" inputmode="decimal" required></label>
+        <label class="geometry-field"><span>Диаметр керна, мм</span><input name="core" inputmode="decimal" required></label>
+      </div>
+    </fieldset>
+    <p id="geometry-restart" hidden>При применении размеров проходка начнётся заново.</p>
+    <p id="geometry-error" class="geometry-error" role="alert" hidden></p>
+    <div class="geometry-actions">
+      <button id="geometry-defaults" class="secondary" type="button">Исходные размеры</button>
+      <button id="geometry-cancel" class="secondary" type="button" hidden>Отмена</button>
+      <button id="geometry-submit" class="primary" type="submit">Построить 3D-модель</button>
+    </div>
+  </form>
+</dialog>
+<script id="calculation-data" type="application/json">
+{
+  "H": 300,
+  "alpha": 90,
+  "barrelLength": 5,
+  "bore": 93.0,
+  "pipeOuter": 50.0,
+  "pipeInner": 39.0,
+  "barrelOuter": 89.0,
+  "barrelInner": 79.0,
+  "core": 73.0,
+  "lt": 4.5,
+  "d3_mm": 28.0,
+  "bk": 80,
+  "rho_rock": 2300,
+  "vm": 6,
+  "v1": 12,
+  "T": 290,
+  "eta": 0.3,
+  "a0": 2,
+  "k": 1.2,
+  "k1": 1.1,
+  "kr": 1.2,
+  "gamma": 1.4,
+  "P0": 100000,
+  "R": 287,
+  "g": 9.81,
+  "Q": 4.587547536000001,
+  "G": 0.09758538576406173,
+  "N_kw": 34.973682862949346,
+  "P1": 0.1354499786236236,
+  "P2": 0.476713501176062,
+  "P3": 0.5419674146928026,
+  "P4": 0.677728215777318,
+  "Pres": 0.727728215777318,
+  "N": 34973.68286294935,
+  "vkol": 15.83196979505491,
+  "vbt": 64.00445908599121
+}
+</script>
+<script>
+"use strict";
+
+const sceneColors = new Map();
+function sceneColor(value) {
+  if (!sceneColors.has(value)) {
+    let rgba;
+    if (value[0] === "#") {
+      const digits = value.slice(1);
+      rgba = [0,2,4].map(i => parseInt(digits.slice(i,i+2),16)/255);
+      rgba.push(1);
+    } else {
+      const [r,g,b,a=1] = value.slice(value.indexOf("(")+1,-1).split(",").map(Number);
+      rgba = [r/255,g/255,b/255,a];
+    }
+    sceneColors.set(value,rgba);
+  }
+  return sceneColors.get(value);
+}
+
+function makeWebGLSceneRenderer(canvas) {
+  const gl = canvas.getContext("webgl", {alpha:true, antialias:true});
+  if (!gl) return null;
+
+  function shader(type, source) {
+    const result = gl.createShader(type);
+    gl.shaderSource(result, source);
+    gl.compileShader(result);
+    if (!gl.getShaderParameter(result, gl.COMPILE_STATUS)) throw Error(gl.getShaderInfoLog(result));
+    return result;
+  }
+
+  const program = gl.createProgram();
+  gl.attachShader(program, shader(gl.VERTEX_SHADER, `
+    attribute vec4 position;
+    attribute vec4 color;
+    attribute vec2 uv;
+    varying mediump vec4 vertexColor;
+    varying mediump vec2 texCoord;
+    void main() {
+      gl_Position = position;
+      vertexColor = color;
+      texCoord = uv;
+    }
+  `));
+  gl.attachShader(program, shader(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    uniform sampler2D signTexture;
+    uniform bool textured;
+    varying mediump vec4 vertexColor;
+    varying mediump vec2 texCoord;
+    void main() {
+      gl_FragColor = textured ? texture2D(signTexture, texCoord) : vertexColor;
+      if (gl_FragColor.a < 0.025) discard;
+    }
+  `));
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);
+  gl.enable(gl.DEPTH_TEST);
+  gl.depthFunc(gl.LEQUAL);
+  gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  for (const [name, count, offset] of [["position",4,0],["color",4,4],["uv",2,8]]) {
+    const location = gl.getAttribLocation(program,name);
+    gl.vertexAttribPointer(location,count,gl.FLOAT,false,40,offset*4);
+    gl.enableVertexAttribArray(location);
+  }
+
+  const useTexture = gl.getUniformLocation(program,"textured");
+  const white = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D,white);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,255,255,255]));
+  const signs = new Map();
+  const glyphs = document.createElement("canvas");
+  const ink = glyphs.getContext("2d");
+  const font = "700 48px Segoe UI, sans-serif";
+  const circle = Array.from({length:12}, (_,i) => [Math.cos(i*Math.PI/6), Math.sin(i*Math.PI/6)]);
+  const opaque = [];
+  const transparent = [];
+  const decals = [];
+  let width, height;
+
+  function vertex(target, p, rgba, dx=0, dy=0, bias=0, u=0, v=0) {
+    // The perspective divide uses the same camera distance as project().
+    const w = 14-p.z;
+    const near = 1, far = 36;
+    const z = ((far+near)*w-2*near*far)/(far-near);
+    target.push(((p.x+dx)*2/width-1)*w,(1-(p.y+dy)*2/height)*w,z-bias,w,...rgba,u,v);
+  }
+
+  function polygon(points, fill) {
+    const rgba = sceneColor(fill);
+    const target = rgba[3] < 1 ? transparent : opaque;
+    for (let i=1;i<points.length-1;i++) {
+      vertex(target,points[0],rgba);
+      vertex(target,points[i],rgba);
+      vertex(target,points[i+1],rgba);
+    }
+  }
+
+  function stroke(a,b,fill,lineWidth) {
+    const length = Math.hypot(b.x-a.x,b.y-a.y);
+    if (length < .001) return;
+    const dx = (b.y-a.y)*lineWidth/(2*length), dy = (a.x-b.x)*lineWidth/(2*length);
+    const rgba = sceneColor(fill);
+    const target = rgba[3] < 1 ? transparent : opaque;
+    vertex(target,a,rgba,dx,dy,.009);
+    vertex(target,a,rgba,-dx,-dy,.009);
+    vertex(target,b,rgba,dx,dy,.009);
+    vertex(target,b,rgba,dx,dy,.009);
+    vertex(target,a,rgba,-dx,-dy,.009);
+    vertex(target,b,rgba,-dx,-dy,.009);
+  }
+
+  function dot({p,radius,fill,alpha,glow}) {
+    const rgb = sceneColor(fill);
+    for (const [size,opacity] of glow ? [[radius*2.15,alpha*.16],[radius,alpha]] : [[radius,alpha]]) {
+      const rgba = [rgb[0],rgb[1],rgb[2],opacity];
+      for (let i=0;i<circle.length;i++) {
+        const [ax,ay] = circle[i], [bx,by] = circle[(i+1)%circle.length];
+        vertex(transparent,p,rgba);
+        vertex(transparent,p,rgba,ax*size,ay*size);
+        vertex(transparent,p,rgba,bx*size,by*size);
+      }
+    }
+  }
+
+  function sign(text,fill) {
+    const key = fill+text;
+    if (signs.has(key)) return signs.get(key);
+    ink.font = font;
+    glyphs.width = Math.ceil(ink.measureText(text).width)+4;
+    glyphs.height = 56;
+    ink.font = font;
+    ink.textBaseline = "middle";
+    ink.fillStyle = fill;
+    ink.fillText(text,2,29);
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D,texture);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,glyphs);
+    const result = {texture,aspect:glyphs.width/glyphs.height};
+    signs.set(key,result);
+    return result;
+  }
+
+  function flush(vertices) {
+    if (!vertices.length) return;
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.STREAM_DRAW);
+    gl.drawArrays(gl.TRIANGLES,0,vertices.length/10);
+  }
+
+  return {
+    kind:"webgl",
+    resize(w,h,ratio) {
+      width = w;
+      height = h;
+      canvas.width = Math.max(1,Math.round(w*ratio));
+      canvas.height = Math.max(1,Math.round(h*ratio));
+      gl.viewport(0,0,canvas.width,canvas.height);
+    },
+    draw(items,project) {
+      opaque.length = transparent.length = decals.length = 0;
+      for (const item of items) {
+        if (item.type === "face") {
+          polygon(item.points,item.fill);
+          if (item.edge) for (let i=0;i<item.points.length;i++) {
+            stroke(item.points[i],item.points[(i+1)%item.points.length],item.edge,.55);
+          }
+        } else if (item.type === "line") {
+          for (let i=1;i<item.points.length;i++) stroke(item.points[i-1],item.points[i],item.fill,item.lineWidth);
+        } else if (item.type === "dot") {
+          dot(item);
+        } else if (item.type === "text") {
+          decals.push(item);
+        }
+      }
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.disable(gl.BLEND);
+      gl.uniform1i(useTexture,0);
+      flush(opaque);
+      gl.depthMask(false);
+      gl.enable(gl.BLEND);
+      flush(transparent);
+      gl.uniform1i(useTexture,1);
+      for (const {position:[x,y,z],text,fill,size} of decals) {
+        const {texture,aspect} = sign(text,fill);
+        const vertices = [];
+        const a = project([x,y+size/2,z]), b = project([x+size*aspect,y+size/2,z]);
+        const c = project([x+size*aspect,y-size/2,z]), d = project([x,y-size/2,z]);
+        for (const [p,u,v] of [[a,0,0],[b,1,0],[c,1,1],[a,0,0],[c,1,1],[d,0,1]]) {
+          vertex(vertices,p,[1,1,1,1],0,0,0,u,v);
+        }
+        gl.bindTexture(gl.TEXTURE_2D,texture);
+        flush(vertices);
+      }
+      gl.depthMask(true);
+    }
+  };
+}
+
+// The same geometry can be rendered when a browser has WebGL disabled.
+function makeSoftwareSceneRenderer(canvas) {
+  const ctx = canvas.getContext("2d");
+  let image, pixels, depth, width, height, scale;
+  const translucent = [];
+
+  function composite(i,r,g,b,a) {
+    const offset = i*4;
+    const previous = image.data[offset+3]/255;
+    const weight = previous*(1-a);
+    const alpha = a+weight;
+    image.data[offset] = (r*255*a+image.data[offset]*weight)/alpha;
+    image.data[offset+1] = (g*255*a+image.data[offset+1]*weight)/alpha;
+    image.data[offset+2] = (b*255*a+image.data[offset+2]*weight)/alpha;
+    image.data[offset+3] = 255*alpha;
+  }
+
+  function triangle(a,b,c,[r,g,blue,alpha],bias=0) {
+    const ax=a.x*scale, ay=a.y*scale, bx=b.x*scale, by=b.y*scale, cx=c.x*scale, cy=c.y*scale;
+    const dx1=bx-ax, dx2=cx-ax, dy1=by-ay, dy2=cy-ay;
+    const area=dx1*dy2-dy1*dx2;
+    if (Math.abs(area)<.001) return;
+    const minX=Math.max(0,Math.ceil(Math.min(ax,bx,cx)-.5));
+    const maxX=Math.min(width-1,Math.floor(Math.max(ax,bx,cx)-.5));
+    const minY=Math.max(0,Math.ceil(Math.min(ay,by,cy)-.5));
+    const maxY=Math.min(height-1,Math.floor(Math.max(ay,by,cy)-.5));
+    const za=1/(14-a.z)+bias, zb=1/(14-b.z)+bias, zc=1/(14-c.z)+bias;
+    const stepU=dy2/area, stepV=-dy1/area;
+    const stepZ=(zb-za)*stepU+(zc-za)*stepV;
+    const solid=alpha===1;
+    const rgba = (255<<24)|(Math.round(blue*255)<<16)|(Math.round(g*255)<<8)|Math.round(r*255);
+    for (let y=minY;y<=maxY;y++) {
+      const dy=y+.5-ay, dx=minX+.5-ax;
+      let u=(dx*dy2-dy*dx2)/area, v=(dx1*dy-dy1*dx)/area;
+      let z=za+u*(zb-za)+v*(zc-za), i=y*width+minX;
+      for (let x=minX;x<=maxX;x++,i++,u+=stepU,v+=stepV,z+=stepZ) {
+        if (u<-.000001 || v<-.000001 || u+v>1.000001 || z<depth[i]-1e-8) continue;
+        if (solid) {
+          pixels[i]=rgba;
+          depth[i]=z;
+        } else {
+          composite(i,r,g,blue,alpha);
+        }
+      }
+    }
+  }
+
+  function stroke(a,b,fill,lineWidth) {
+    const length=Math.hypot(b.x-a.x,b.y-a.y);
+    if (length<.001) return;
+    const dx=(b.y-a.y)*lineWidth/(2*length), dy=(a.x-b.x)*lineWidth/(2*length);
+    const offset = (p,sign) => ({x:p.x+sign*dx,y:p.y+sign*dy,z:p.z});
+    const ap=offset(a,1), am=offset(a,-1), bp=offset(b,1), bm=offset(b,-1);
+    const color=sceneColor(fill);
+    triangle(ap,am,bp,color,.00020);
+    triangle(bp,am,bm,color,.00020);
+  }
+
+  function dot({p,radius,fill,alpha,glow}) {
+    const [r,g,b] = sceneColor(fill);
+    const cx=p.x*scale, cy=p.y*scale, z=1/(14-p.z);
+    for (const [size,opacity] of glow ? [[radius*2.15,alpha*.16],[radius,alpha]] : [[radius,alpha]]) {
+      const rad=size*scale;
+      for (let y=Math.max(0,Math.ceil(cy-rad));y<=Math.min(height-1,Math.floor(cy+rad));y++) {
+        for (let x=Math.max(0,Math.ceil(cx-rad));x<=Math.min(width-1,Math.floor(cx+rad));x++) {
+          const i=y*width+x;
+          const coverage=Math.min(1,rad+.5-Math.hypot(x+.5-cx,y+.5-cy));
+          if (z>=depth[i] && coverage>0) composite(i,r,g,b,coverage*opacity);
+        }
+      }
+    }
+  }
+
+  function sign({position:[x,y,z],p,text,fill,size},project) {
+    const right=project([x+size,y,z]), up=project([x,y+size,z]);
+    const fontSize=48;
+    ctx.font="700 "+fontSize+"px Segoe UI, sans-serif";
+    const middle=project([x+size*ctx.measureText(text).width/(fontSize*2),y,z]);
+    const sx=Math.floor(middle.x*scale), sy=Math.floor(middle.y*scale);
+    if (sx<0 || sy<0 || sx>=width || sy>=height || 1/(14-middle.z)<depth[sy*width+sx]-.000035) return;
+    const factor=scale/fontSize;
+    ctx.setTransform((right.x-p.x)*factor,(right.y-p.y)*factor,
+      (p.x-up.x)*factor,(p.y-up.y)*factor,p.x*scale,p.y*scale);
+    ctx.textBaseline="middle";
+    ctx.fillStyle=fill;
+    ctx.fillText(text,0,0);
+    ctx.resetTransform();
+  }
+
+  return {
+    kind:"software",
+    resize(w,h) {
+      scale=Math.min(1,1050/w,720/h);
+      width=canvas.width=Math.max(1,Math.round(w*scale));
+      height=canvas.height=Math.max(1,Math.round(h*scale));
+      image=ctx.createImageData(width,height);
+      pixels=new Uint32Array(image.data.buffer);
+      depth=new Float32Array(width*height);
+    },
+    draw(items,project) {
+      pixels.fill(0);
+      depth.fill(0);
+      translucent.length=0;
+      for (const item of items) {
+        if (item.type !== "face") {
+          translucent.push(item);
+          continue;
+        }
+        const {points,fill,edge}=item, rgba=sceneColor(fill);
+        for (let i=1;i<points.length-1;i++) triangle(points[0],points[i],points[i+1],rgba);
+        if (edge) translucent.push({type:"line",points:[...points,points[0]],fill:edge,lineWidth:.55});
+      }
+      translucent.sort((a,b)=>a.depth-b.depth);
+      for (const item of translucent) {
+        if (item.type === "dot") dot(item);
+        else if (item.type === "line") {
+          for (let i=1;i<item.points.length;i++) stroke(item.points[i-1],item.points[i],item.fill,item.lineWidth);
+        }
+      }
+      ctx.putImageData(image,0,0);
+      for (const item of translucent) if (item.type === "text") sign(item,project);
+    }
+  };
+}
+</script>
+<script>
+"use strict";
+
+const canvas = document.querySelector("#view");
+const ctx = canvas.getContext("2d");
+const mesh = document.querySelector("#mesh");
+let renderer;
+try {
+  renderer = makeWebGLSceneRenderer(mesh);
+} catch (error) {
+  console.warn("WebGL недоступен, используется программная отрисовка.",error);
+}
+if (!renderer) {
+  const software = document.createElement("canvas");
+  software.id = mesh.id;
+  software.setAttribute("aria-hidden","true");
+  mesh.replaceWith(software);
+  renderer = makeSoftwareSceneRenderer(software);
+}
+document.querySelector("#mesh").dataset.renderer = renderer.kind;
+const play = document.querySelector("#play");
+const stop = document.querySelector("#stop");
+const reset = document.querySelector("#reset");
+const status = document.querySelector("#status");
+const drillLamp = document.querySelector("#bit-drill");
+const airLamp = document.querySelector("#bit-air");
+const tempo = document.querySelector("#tempo");
+const coreProgress = document.querySelector("#core-progress");
+const coreProgressValue = document.querySelector("#core-progress-value");
+const returnLabel = document.querySelector("#return-label");
+const sceneBar = document.querySelector("#scene-bar");
+const sceneName = document.querySelector("#scene-name");
+const presentationButton = document.querySelector("#presentation");
+const presentationLabel = document.querySelector("#presentation-label");
+const geometryDialog = document.querySelector("#geometry-dialog");
+const geometryForm = document.querySelector("#geometry-form");
+const geometryError = document.querySelector("#geometry-error");
+const geometryCancel = document.querySelector("#geometry-cancel");
+const geometrySubmit = document.querySelector("#geometry-submit");
+const geometryRestart = document.querySelector("#geometry-restart");
+const geometryInterval = document.querySelector("#geometry-interval");
+const modelPage = document.querySelector("#model");
+const calculationPage = document.querySelector("#calculation");
+const formulasPage = document.querySelector("#formulas");
+const pageLinks = document.querySelectorAll(".page-nav a");
+const editGeometry = document.querySelector("#edit-geometry");
+const closeSample = document.querySelector("#close-sample");
+const sampleInfo = document.querySelector("#sample-info");
+const currentDepth = document.querySelector("#current-depth");
+const diameterSummary = document.querySelector("#diameter-summary");
+const barrelSummary = document.querySelector("#barrel-summary");
+const clearanceSummary = document.querySelector("#clearance-summary");
+// Снимок default_data() и hydraulic_model() из main_file.py.
+const calculation = Object.freeze(JSON.parse(document.querySelector("#calculation-data").textContent));
+const {H, barrelLength, bore, pipeOuter, pipeInner, barrelOuter, barrelInner, core} = calculation;
+const defaultDimensions = Object.freeze({depth:H, barrelLength, advance:2.5,
+  bore, pipeOuter, pipeInner, barrelOuter, barrelInner, core});
+const dimensionFormat = new Intl.NumberFormat("ru-RU",{maximumFractionDigits:4});
+const depthFormat = new Intl.NumberFormat("ru-RU",{minimumFractionDigits:2,maximumFractionDigits:2});
+let activePage = "model", savedModel;
+let dimensions, geometry;
+const descriptions = {
+  both: "Коронка углубляется, и керн входит в керноприёмник. Воздух выносит шлам по зазору снаружи колонны.",
+  drill: "Коронка углубляется, и керн входит в керноприёмник. Частицы породы остаются у забоя.",
+  air: "Коронка неподвижна. Воздух спускается внутри колонны, а шлам поднимается по затрубному зазору к шламоуловителю."
+};
+const pressureLabels = {P1:"P₁",P2:"P₂",P3:"P₃",P4:"P₄",Pres:"P компр."};
+const labels = Object.fromEntries(["feed", "return", "casing", "receiver", "core", "bit", "compressor", "collector", "exhaust",
+  ...Object.keys(pressureLabels)].map(name => [name, document.querySelector("#label-" + name)]));
+for (const element of document.querySelectorAll("[data-value]")) {
+  const value = calculation[element.dataset.value];
+  const format = element.dataset.digits === undefined ? dimensionFormat : new Intl.NumberFormat("ru-RU",{
+    minimumFractionDigits:Number(element.dataset.digits), maximumFractionDigits:Number(element.dataset.digits)
+  });
+  element.textContent = format.format(value);
+}
+// Pressure inputs in MPa (absolute), intake flow in m³/min, output in kW.
+function electricPowerKw(flow, inlet, outlet, efficiency) {
+  const gamma = calculation.gamma;
+  const logRatio = Math.log1p((outlet - inlet) / inlet);
+  return gamma / (gamma - 1) * (inlet * 1e6) * flow / (60000 * efficiency)
+    * Math.expm1((gamma - 1) / gamma * logRatio);
+}
+const powerField = name => document.getElementById("power-" + name);
+powerField("inlet").value = calculation.P0 / 1e6;
+powerField("base-flow").value = calculation.Q.toFixed(6);
+powerField("base-pressure").value = calculation.Pres.toFixed(6);
+powerField("base-eta").value = "0,70";
+powerField("alt-eta").value = "0,70";
+const powerFormat = new Intl.NumberFormat("ru-RU", {maximumFractionDigits: 2});
+function powerNumber(name) {
+  const raw = powerField(name).value.trim();
+  return /^(?:[0-9]+(?:[.,][0-9]*)?|[.,][0-9]+)$/.test(raw) ? Number(raw.replace(",", ".")) : NaN;
+}
+function updatePower() {
+  const inlet = powerNumber("inlet"), hours = powerNumber("hours"), price = powerNumber("price");
+  const costs = [];
+  for (const key of ["base", "alt"]) {
+    const flow = powerNumber(key + "-flow"), outlet = powerNumber(key + "-pressure"), eta = powerNumber(key + "-eta");
+    const valid = inlet > 0 && flow >= 0 && outlet >= inlet && eta > 0 && eta <= 1;
+    const kw = valid ? electricPowerKw(flow, inlet, outlet, eta) : NaN;
+    const cost = kw * hours * price;
+    costs.push(cost);
+    const result = powerField(key + "-result");
+    if (!Number.isFinite(kw)) {
+      result.textContent = "Укажите расход, абсолютные давления и КПД. Выходное давление должно быть не ниже входного.";
+    } else {
+      result.textContent = powerFormat.format(kw) + " кВт"
+        + (Number.isFinite(cost) ? " · " + powerFormat.format(cost) + " ₽ за указанные часы" : "");
+    }
+  }
+  const savings = costs[0] - costs[1];
+  powerField("difference").textContent = Number.isFinite(savings)
+    ? (savings < 0 ? "Дополнительные затраты: " : "Экономия: ") + powerFormat.format(Math.abs(savings)) + " ₽"
+    : "";
+}
+document.getElementById("power-inputs").addEventListener("input", updatePower);
+updatePower();
+const pressureFormat = new Intl.NumberFormat("ru-RU",{minimumFractionDigits:3,maximumFractionDigits:3});
+for (const [key,label] of Object.entries(pressureLabels)) labels[key].textContent = label+" · "+pressureFormat.format(calculation[key])+" МПа";
+const cameras = {
+  yard: {yaw:.28, pitch:.39, caption:"Оборудование на устье"},
+  overview: {yaw:.11, pitch:.25, caption:"Продольный разрез"},
+  bit: {yaw:-.15, pitch:.22, caption:"Коронка и керноприёмник"}
+};
+const initialPass = {advance:0, spin:.15, flow:0, dust:0, dustOpacity:0, spoils:0};
+const state = {...initialPass, running:false, drill:false, air:false, mode:"both", speed:1,
+  view:"overview", yaw:cameras.overview.yaw, pitch:cameras.overview.pitch, zoom:1};
+// Время прохождения участков задано для демонстрационной анимации.
+const airIntake = [["hose",.70], ["column",1.18]];
+const crownTime = .22;
+const airAtCrown = airIntake.reduce((total,[,seconds])=>total+seconds,0);
+const airStream = makeStream(20, [
+  ...airIntake, ["crown",crownTime], ["annulus",1.18], ["outlet",.42], ["exhaust",.66]
+]);
+const cuttingsStream = makeStream(15, [
+  ["annulus",2.72], ["outlet",.66], ["separator",.88]
+]);
+const streams = [airStream,cuttingsStream];
+
+function makeStream(rate, legs) {
+  return {rate,legs,duration:legs.reduce((total,[,seconds])=>total+seconds,0),born:[]};
+}
+const panelButtons = [
+  {node:document.querySelector("#scene-start"), sidebar:play, action:startPass, label:"ПУСК", y:3.44, color:[124,187,94]},
+  {node:document.querySelector("#scene-stop"), sidebar:stop, action:stopPass, label:"СТОП", y:3.25, color:[207,93,72]},
+  {node:document.querySelector("#scene-reset"), sidebar:reset, action:resetPass, label:"СБРОС", y:3.06, color:[219,172,87]}
+];
+const topY = 2.64;
+const TAU = Math.PI * 2;
+const rockStart = 0.99;
+const rockEnd = TAU - 0.99;
+const pipeCut = .66, barrelCut = .76, coreCut = .94;
+const terrainBounds = {left:-5.15,right:5.15,back:-4.12,front:1.95};
+const clamp = (x, low, high) => Math.max(low, Math.min(high, x));
+const frac = x => x - Math.floor(x);
+const mix = (start,end,t) => start+(end-start)*t;
+const cornerAngles = [terrainBounds.left,terrainBounds.right].flatMap(x =>
+  [terrainBounds.back,terrainBounds.front].map(z => (Math.atan2(x,z)+TAU)%TAU));
+// Соосные детали используют одну гранёную окружность. Даже при малом
+// зазоре грань внутренней детали не пересекает грань наружной.
+const ringAngles = [TAU,...Array.from({length:48},(_,i)=>i*TAU/48),...cornerAngles,
+  ...[pipeCut,barrelCut,coreCut,rockStart].flatMap(a=>[a,TAU-a])].sort((a,b)=>a-b);
+const ringVectors = new Map(ringAngles.map(a=>[a,[Math.sin(a),Math.cos(a)]]));
+ringVectors.set(TAU,ringVectors.get(0));
+const anglesBetween = (start,end) => [start,...ringAngles.filter(a=>a>start && a<end),end];
+const rockAngles = anglesBetween(rockStart,rockEnd);
+function ringPoint(r,a,y) {
+  const angle = a>=0 && a<=TAU ? a : ((a%TAU)+TAU)%TAU;
+  const vertex = ringVectors.get(angle);
+  if (vertex) return [r*vertex[0],y,r*vertex[1]];
+  const next = ringAngles.findIndex(value=>value>angle);
+  const lo = ringAngles[next-1], hi = ringAngles[next];
+  const part = (angle-lo)/(hi-lo);
+  const [x1,z1] = ringVectors.get(lo), [x2,z2] = ringVectors.get(hi);
+  return [r*mix(x1,x2,part),y,r*mix(z1,z2,part)];
+}
+let width = 0, height = 0, pixelRatio = 1, lastTime = 0, needsDraw = true;
+
+const particleField = name => document.getElementById("particle-"+name);
+const particlePanel = particleField("panel"), particleMarker = particleField("marker");
+particleField("density").value = calculation.rho_rock;
+particleField("pressure").value = calculation.P0/1e6;
+particleField("temperature").value = calculation.T;
+let particleResult = null, particlePhase = .5, projectParticle = null, particleViewNote = "";
+
+// SI units. The slip speed is found before the independently specified local flow is applied.
+function sphereFallSpeed(d, solidDensity, gasDensity, viscosity, gravity) {
+  const target = 4*gravity*d*(solidDensity-gasDensity)/(3*gasDensity);
+  function dragTimesSpeedSquared(w) {
+    const re = gasDensity*w*d/viscosity;
+    const cd = 24/re*(1+.15*re**.687) + .42/(1+42500/re**1.16);
+    return cd*w*w;
+  }
+  let low = 0, high = 1;
+  while (dragTimesSpeedSquared(high)<target) high *= 2;
+  for (let i=0;i<64;i++) {
+    const middle = (low+high)/2;
+    if (dragTimesSpeedSquared(middle)<target) low = middle;
+    else high = middle;
+  }
+  return (low+high)/2;
+}
+function readParticle(name) {
+  const raw = particleField(name).value.trim();
+  return /^(?:\d+(?:[.,]\d*)?|[.,]\d+)$/.test(raw) ? Number(raw.replace(",",".")) : NaN;
+}
+const particleInputs = [
+  ["diameter",.05,8,"Диаметр частицы, мм"],["density",500,8000,"Плотность частицы, кг/м³"],
+  ["pressure",.05,1.5,"Абсолютное давление, МПа"],["temperature",240,420,"Температура, К"],
+  ["flow",0,Infinity,"Местный расход, м³/мин"]
+];
+const particleNumber = new Intl.NumberFormat("ru-RU",{maximumFractionDigits:3});
+function refreshParticle() {
+  particleResult = null;
+  needsDraw = true;
+  particleMarker.hidden = true;
+  particleField("results").hidden = true;
+  particleField("camera-note").hidden = true;
+  particleField("balance").disabled = true;
+  for (const [name,lo,hi,label] of particleInputs) {
+    const value = readParticle(name);
+    if (!Number.isFinite(value) || value<lo || value>hi) {
+      particleField("state").textContent = label+" · "+(Number.isFinite(hi)
+        ? "допустимо от "+particleNumber.format(lo)+" до "+particleNumber.format(hi)+"."
+        : "введите конечное неотрицательное число.");
+      return;
+    }
+  }
+  const barrel = particleField("section").value==="barrel";
+  const outer = barrel ? dimensions.barrelOuter : dimensions.pipeOuter;
+  const gap = (dimensions.bore-outer)/2;
+  const area = Math.PI*(dimensions.bore-outer)*(dimensions.bore+outer)/4e6;
+  const d = readParticle("diameter"), t = readParticle("temperature");
+  const rho = readParticle("pressure")*1e6/(calculation.R*t);
+  const mu = 1.716e-5*(t/273.15)**1.5*(273.15+111)/(t+111);
+  const w = sphereFallSpeed(d/1000,readParticle("density"),rho,mu,calculation.g);
+  const qStar = 60*area*w, u = readParticle("flow")/(60*area);
+  const blocked = d>=gap, tooFast = u>=Math.sqrt(calculation.gamma*calculation.R*t);
+  const net = Math.abs(u-w)<=1e-9*Math.max(1,w) ? 0 : u-w;
+  const regime = net>0 ? "↑ Подъём" : net<0 ? "↓ Оседание" : "● Витание";
+  const speed = v => (v!==0 && Math.abs(v)<.001 ? v.toExponential(1).replace(".",",") : particleNumber.format(v))+" м/с";
+  particleField("gap").textContent = particleNumber.format(gap)+" мм";
+  particleField("air").textContent = tooFast ? "вне диапазона" : speed(u);
+  particleField("terminal").textContent = speed(w);
+  particleField("net").textContent = blocked || tooFast ? "не применимо" : (net>0?"+":"")+speed(net);
+  particleField("critical").textContent = blocked ? "не применимо" : particleNumber.format(qStar)+" м³/мин";
+  particleField("state").textContent = blocked ? "Частица не проходит по зазору. Показана скорость витания в свободном воздухе."
+    : tooFast ? "Заданная скорость достигает скорости звука. Уменьшите расход для этой модели."
+    : regime+(net===0 ? " · частица неподвижна относительно стенки." : "");
+  particleField("results").hidden = false;
+  particleField("balance").disabled = blocked;
+  particleField("tag").textContent = regime;
+  particleResult = {barrel,qStar,net,show:!blocked&&!tooFast};
+}
+function focusParticleSection() {
+  particlePhase = .5;
+  selectView(particleField("section").value==="barrel" ? "bit" : "overview");
+}
+particlePanel.addEventListener("toggle",()=>{
+  if (particlePanel.open && activePage==="model") focusParticleSection();
+  else particleMarker.hidden = true;
+  needsDraw = true;
+});
+particlePanel.addEventListener("input",event=>{
+  if (event.target===particleField("section")) focusParticleSection();
+  refreshParticle();
+});
+particleField("balance").addEventListener("click",()=>{
+  if (!particleResult || particleField("balance").disabled) return;
+  particleField("flow").value = String(Number(particleResult.qStar.toPrecision(12)));
+  refreshParticle();
+});
+function animateParticle(delta) {
+  const on = activePage==="model" && particlePanel.open && particleResult?.show;
+  if (!on || !projectParticle) {
+    particleMarker.hidden = true;
+  } else {
+    particlePhase = (particlePhase+delta*.22*Math.tanh(particleResult.net/5)+1)%1;
+    const pt = projectParticle(particlePhase);
+    particleMarker.hidden = pt.x<6 || pt.x>width-6 || pt.y<6 || pt.y>height-6;
+    particleMarker.style.transform = "translate("+pt.x+"px,"+pt.y+"px)";
+  }
+  const note = particleField("camera-note");
+  const message = on && particleMarker.hidden ? particleViewNote || "Метка за границей кадра. Верните исходный ракурс участка." : "";
+  if (note.textContent!==message) note.textContent = message;
+  note.hidden = !message;
+}
+
+function makeGeometry(values) {
+  const wellHeight = 3.1+6.4/(1+370/values.depth);
+  // На общем разрезе одна осевая шкала для ствола, колонковой трубы и проходки.
+  const passFraction = values.advance/values.barrelLength;
+  const overviewBarrelHeight = wellHeight*(values.barrelLength/values.depth);
+  const detailTarget = 1.45+1.55/(1+9/values.barrelLength);
+  const detailBarrelHeight = Math.max(overviewBarrelHeight,Math.min(detailTarget,(wellHeight-.65)/(1+passFraction)));
+  const finishY = topY-wellHeight;
+  function longitudinal(barrelHeight) {
+    return {barrelHeight,toolScale:Math.min(1,barrelHeight/1.4),strokeLength:barrelHeight*passFraction};
+  }
+  const bore = .25+.65/(1+97/values.bore);
+  const radius = diameter => bore*(diameter/values.bore);
+  const pipeOuter = radius(values.pipeOuter), pipeInner = radius(values.pipeInner);
+  const barrelOuter = radius(values.barrelOuter), barrelInner = radius(values.barrelInner);
+  const core = radius(values.core);
+  return {
+    finishY, overview:longitudinal(overviewBarrelHeight), detail:longitudinal(detailBarrelHeight),
+    bore, pipeOuter, pipeInner, barrelOuter, barrelInner, core,
+    pipeBand:pipeOuter+.18*Math.min(bore-pipeOuter,pipeOuter),
+    barrelBand:barrelOuter+.28*Math.min(bore-barrelOuter,barrelOuter),
+    receiverInner:mix(core,barrelInner,.20), receiverOuter:mix(core,barrelInner,.44),
+    crownInner:mix(core,barrelInner,.12), crownBody:mix(barrelOuter,bore,.48),
+    crownCollar:mix(barrelOuter,bore,.64), crownRadius:mix(barrelOuter,bore,.79)
+  };
+}
+
+function validateDimensions(values) {
+  for (const [field,value] of Object.entries(values)) {
+    if (!Number.isFinite(value) || value <= 0) return [field,"Введи положительное число. Дробную часть можно отделить точкой или запятой."];
+  }
+  const {depth,barrelLength,advance,bore,pipeOuter,pipeInner,barrelOuter,barrelInner,core} = values;
+  if (advance > barrelLength) return ["advance","За одну проходку модель может углубиться максимум на длину колонковой трубы ("+dimensionFormat.format(barrelLength)+" м). Увеличь длину трубы или уменьши углубление."];
+  if (depth-advance <= barrelLength) return ["depth","Начальная глубина (конечная глубина минус углубление) должна превышать длину колонковой трубы."];
+  if (pipeOuter >= bore) return ["pipeOuter","Наружный диаметр бурильной трубы должен быть меньше диаметра ствола."];
+  if (pipeInner >= pipeOuter) return ["pipeInner","Внутренний диаметр бурильной трубы должен быть меньше наружного."];
+  if (barrelOuter >= bore) return ["barrelOuter","Наружный диаметр колонковой трубы должен быть меньше диаметра ствола."];
+  if (barrelInner >= barrelOuter) return ["barrelInner","Внутренний диаметр колонковой трубы должен быть меньше наружного."];
+  if (core >= barrelInner) return ["core","Диаметр керна должен быть меньше внутреннего диаметра колонковой трубы."];
+  return null;
+}
+
+function clearGeometryError() {
+  geometryForm.querySelector("[aria-invalid]")?.removeAttribute("aria-invalid");
+  geometryError.hidden = true;
+  geometryError.textContent = "";
+}
+
+function readDimension(field) {
+  const input = geometryForm.elements.namedItem(field).value.trim();
+  return /^(?:\d+(?:[.,]\d*)?|[.,]\d+)$/.test(input) ? Number(input.replace(",",".")) : NaN;
+}
+
+function updateInterval() {
+  const end = readDimension("depth"), distance = readDimension("advance");
+  geometryInterval.hidden = !Number.isFinite(end) || !Number.isFinite(distance) || distance<=0 || end<distance;
+  geometryInterval.textContent = geometryInterval.hidden ? "" :
+    "Начальная глубина " + dimensionFormat.format(end-distance) + " м → конечная " + dimensionFormat.format(end) + " м";
+}
+
+function fillGeometryForm(values) {
+  for (const [field,value] of Object.entries(values)) {
+    geometryForm.elements.namedItem(field).value = String(value).replace(".",",");
+  }
+  clearGeometryError();
+  updateInterval();
+}
+
+function openGeometry() {
+  fillGeometryForm(dimensions ?? defaultDimensions);
+  geometryCancel.hidden = !geometry;
+  geometrySubmit.textContent = geometry ? "Перестроить 3D-модель" : "Построить 3D-модель";
+  geometryRestart.hidden = !geometry || (state.advance === 0 && state.flow === 0 && !state.running);
+  geometryDialog.showModal();
+}
+
+function updateDepth() {
+  const depth = dimensions.depth-dimensions.advance*(1-state.advance);
+  const label = depthFormat.format(depth)+" / "+depthFormat.format(dimensions.depth)+" м";
+  if (currentDepth.textContent !== label) {
+    currentDepth.textContent = label;
+    currentDepth.title = label;
+  }
+  const ratio = dimensionFormat.format(100*(dimensions.barrelLength/depth))+" %";
+  if (barrelSummary.textContent !== ratio) barrelSummary.textContent = ratio;
+  const travelled = dimensionFormat.format(dimensions.advance*state.advance);
+  const total = dimensionFormat.format(dimensions.advance);
+  const progressLabel = travelled+" / "+total+" м";
+  if (coreProgressValue.textContent !== progressLabel) {
+    coreProgressValue.textContent = progressLabel;
+    coreProgressValue.title = progressLabel;
+    coreProgress.setAttribute("aria-valuetext",travelled+" м из "+total+" м");
+  }
+  coreProgress.value = state.advance*100;
+}
+
+function applyDimensions(values) {
+  dimensions = values;
+  geometry = makeGeometry(values);
+  refreshParticle();
+  diameterSummary.textContent = dimensionFormat.format(values.bore)+" / "+dimensionFormat.format(values.pipeOuter)+" мм";
+  clearanceSummary.textContent = dimensionFormat.format((values.bore-values.barrelOuter)/2)+" мм";
+  updateDepth();
+}
+
+geometryForm.addEventListener("submit",event => {
+  event.preventDefault();
+  clearGeometryError();
+  const values = Object.fromEntries(Object.keys(defaultDimensions).map(field=>[field,readDimension(field)]));
+  const error = validateDimensions(values);
+  if (error) {
+    const [field,message] = error;
+    const input = geometryForm.elements.namedItem(field);
+    input.setAttribute("aria-invalid","true");
+    geometryError.hidden = false;
+    geometryError.textContent = message;
+    input.focus();
+    return;
+  }
+  resetPass();
+  applyDimensions(values);
+  geometryDialog.close();
+  canvas.focus({preventScroll:true});
+});
+geometryForm.addEventListener("input",event => {
+  clearGeometryError();
+  if (event.target.name === "depth" || event.target.name === "advance") updateInterval();
+});
+editGeometry.addEventListener("click",openGeometry);
+document.querySelector("#geometry-defaults").addEventListener("click",() => fillGeometryForm(defaultDimensions));
+geometryCancel.addEventListener("click",() => geometryDialog.close());
+geometryDialog.addEventListener("cancel",event => { if (!geometry) event.preventDefault(); });
+
+function shade(rgb, amount) {
+  return "rgb(" + rgb.map(channel => Math.round(clamp(channel * amount, 0, 255))).join(",") + ")";
+}
+
+function frame() {
+  const {finishY,overview,detail,bore,pipeInner,pipeOuter,pipeBand,
+    barrelOuter,barrelInner,barrelBand,receiverInner,receiverOuter,core,
+    crownInner,crownBody,crownCollar,crownRadius} = geometry;
+  const close = state.view === "bit";
+  const yard = state.view === "yard";
+  const {barrelHeight,toolScale,strokeLength} = close ? detail : overview;
+  const stroke = state.advance*strokeLength;
+  // Вершина керна остаётся на уровне начала проходки.
+  const coreTop = finishY+strokeLength;
+  const bottomY = finishY+strokeLength*(1-state.advance);
+  const cutY = bottomY+.14*toolScale;
+  const hasCore = coreTop-bottomY > .0001;
+  const depthOffset = finishY+3.33;
+  const centerY = close ? bottomY+barrelHeight*.42 : yard ? 3.94 : 1.65+depthOffset*.48;
+  const centerZ = yard ? -1.13 : -.57;
+  const viewHeight = close ? Math.max(4.1,barrelHeight+1.65) : yard ? 6.75 : 13.0-depthOffset;
+  const scale = Math.min(height / viewHeight, width / (close ? 5.4 : yard ? 12.10 : 11.75)) * state.zoom;
+  const cx = width * 0.51;
+  const cy = height * (close ? .47 : yard ? .46 : .50);
+  const sy = Math.sin(state.yaw), cyaw = Math.cos(state.yaw);
+  const sp = Math.sin(state.pitch), cp = Math.cos(state.pitch);
+  const items = [];
+  function project([x,y,z]) {
+    z -= centerZ;
+    const vertical = y - centerY;
+    const horizontalDepth = x * sy + z * cyaw;
+    const depth = horizontalDepth * cp + vertical * sp;
+    const factor = scale * 14 / (14 - depth);
+    return {x:cx + (x * cyaw - z * sy) * factor, y:cy - (vertical * cp - horizontalDepth * sp) * factor, z:depth, scale:factor};
+  }
+  function face(vertices, fill, edge = "") {
+    items.push({type:"face",points:vertices.map(project),fill,edge});
+  }
+  function line(vertices, fill, lineWidth = 1) {
+    const points = vertices.map(project);
+    const depth = points.reduce((sum,p) => sum+p.z,0)/points.length;
+    items.push({type:"line",points,fill,lineWidth,depth});
+  }
+  function particle(position, radius, fill, alpha = 1, glow = false) {
+    const p = project(position);
+    items.push({type:"dot", p, radius:Math.max(close ? .9 : 1.3, radius * p.scale), fill, alpha, glow, depth:p.z + 0.009});
+  }
+  function box(x1,y1,z1,x2,y2,z2,color,edge="rgba(38,54,51,.53)") {
+    const a=[x1,y1,z1], b=[x2,y1,z1], c=[x2,y2,z1], d=[x1,y2,z1];
+    const e=[x1,y1,z2], f=[x2,y1,z2], g=[x2,y2,z2], h=[x1,y2,z2];
+    face([a,b,c,d],shade(color,.62),edge);
+    face([a,e,h,d],shade(color,.80),edge);
+    face([b,f,g,c],shade(color,.72),edge);
+    face([a,b,f,e],shade(color,.58),edge);
+    face([d,c,g,h],shade(color,1.14),edge);
+    face([e,f,g,h],shade(color,.96),edge);
+  }
+  function disc(x,y,z,r,color) {
+    const points = Array.from({length:18}, (_,i) => {
+      const a = i * TAU / 18;
+      return [x+r*Math.cos(a),y+r*Math.sin(a),z];
+    });
+    face(points,color);
+  }
+  function textAt(position,text,size,color) {
+    const p = project(position);
+    items.push({type:"text",position,p,text,size,fill:color,depth:p.z+.009});
+  }
+  function ringFace(inner,outer,y,start,end,color) {
+    if (outer <= inner || end <= start) return;
+    const angles = anglesBetween(start,end);
+    for (let i=1;i<angles.length;i++) {
+      const a=angles[i-1], b=angles[i];
+      const vertices = [ringPoint(inner,a,y),ringPoint(outer,a,y),ringPoint(outer,b,y)];
+      if (inner>0) vertices.push(ringPoint(inner,b,y));
+      face(vertices,color);
+    }
+  }
+  function tube(r1, r2, y1, y2, start, end, color, {upper = [r1,r2], flatOuter = false} = {}) {
+    if (y2<=y1 || end<=start) return;
+    const [innerTop,outerTop] = upper;
+    const angles = anglesBetween(start,end);
+    for (let i=1;i<angles.length;i++) {
+      const a=angles[i-1], b=angles[i];
+      const light = flatOuter ? 1 : .86 + .19 * Math.cos((a+b)*.5 + .56);
+      face([ringPoint(r2,a,y1),ringPoint(r2,b,y1),ringPoint(outerTop,b,y2),ringPoint(outerTop,a,y2)],shade(color,light));
+      if (r1>0 || innerTop>0) {
+        face([ringPoint(r1,a,y1),ringPoint(r1,b,y1),ringPoint(innerTop,b,y2),ringPoint(innerTop,a,y2)],shade(color,.6+.07*Math.cos(a)));
+      }
+    }
+    if (end-start < TAU) {
+      for (const angle of [start,end]) {
+        face([ringPoint(r1,angle,y1),ringPoint(r2,angle,y1),ringPoint(outerTop,angle,y2),ringPoint(innerTop,angle,y2)],shade(color,1.08));
+      }
+    }
+  }
+  function arrow(radius, angle, y, direction, color, size = .16) {
+    const [x,,z] = ringPoint(radius,angle,y);
+    const at = (offset, vertical) => [x + offset*Math.cos(angle), y+vertical, z-offset*Math.sin(angle)];
+    line([at(0,-direction*size*1.8),at(0,direction*size)],color,close ? 2 : 2.25);
+    face([at(0,direction*size*1.45),at(-size*.48,direction*size*.57),at(size*.48,direction*size*.57)],color);
+  }
+
+  // Площадка и геологический разрез имеют общую сетку и одну границу выреза.
+  // В крупном плане растягивается тот же интервал вместе с породой,
+  // чтобы границы пластов и цвет керна совпадали в обоих ракурсах.
+  const overviewEnd = finishY+overview.strokeLength+overview.barrelHeight;
+  const detailEnd = finishY+detail.strokeLength+detail.barrelHeight;
+  function sectionY(y) {
+    if (!close || overviewEnd===detailEnd || y<=finishY) return y;
+    if (y<=overviewEnd) return mix(finishY,detailEnd,(y-finishY)/(overviewEnd-finishY));
+    return mix(detailEnd,topY,(y-overviewEnd)/(topY-overviewEnd));
+  }
+  const casingBottom = sectionY(1.54);
+  const gravelBottom = sectionY(2.18);
+  const terrainBase = finishY-.50;
+  const layerY = y => sectionY(mix(terrainBase,1.54,(y+3.83)/5.37));
+  const strata = [
+    [terrainBase,layerY(-2.98),[92,87,85]],
+    [layerY(-2.98),layerY(-1.28),[119,105,91]],
+    [layerY(-1.28),layerY(-.34),[142,120,99]],
+    [layerY(-.34),layerY(.6),[96,112,118]],
+    [layerY(.6),casingBottom,[123,122,106]],
+    [casingBottom,gravelBottom,[145,125,102]],
+    [gravelBottom,topY,[160,138,110]]
+  ];
+  const casingInner = bore*1.043, casingOuter = bore*1.12;
+  const casedRadius = bore*1.131, sealOuter = bore*1.16;
+  const boreRadius = y => y >= casingBottom ? casedRadius : bore;
+  // На границе цвет берётся у породы непосредственно под этой отметкой.
+  const rockColorBelow = y => strata.find(([lo,hi]) => lo < y && y <= hi)[2];
+  const bottomColor = rockColorBelow(bottomY);
+  const gravel = [168,151,123];
+  function outline(angle,y) {
+    const x = Math.sin(angle), z = Math.cos(angle);
+    const bounds = terrainBounds;
+    const border = Math.min(x > 0 ? bounds.right/x : bounds.left/x,z > 0 ? bounds.front/z : bounds.back/z);
+    const extent = y >= gravelBottom ? 1 : .40 + .60 * ((y-terrainBase)/(gravelBottom-terrainBase))**4;
+    const radius = Math.max(border*extent,boreRadius(y)+.16);
+    return [x*radius,y,z*radius];
+  }
+  function terrainBand(lo,hi,radius,color) {
+    const sectionColor = shade(color,1);
+    const levels = Math.ceil((hi-lo)/.32);
+    for (let k=0;k<levels;k++) {
+      const y = mix(lo,hi,k/levels), next = k+1===levels ? hi : mix(lo,hi,(k+1)/levels);
+      for (let i=1;i<rockAngles.length;i++) {
+        const a = rockAngles[i-1], b = rockAngles[i];
+        const outer = [outline(a,y),outline(b,y),outline(b,next),outline(a,next)];
+        const light = .75+.18*Math.cos((a+b)/2-.85);
+        face(outer,shade(color,light));
+        if (next > bottomY) {
+          const base = Math.max(y,bottomY);
+          face([ringPoint(radius,a,base),ringPoint(radius,b,base),ringPoint(radius,b,next),ringPoint(radius,a,next)],
+            shade(color,.54+.14*Math.sin((a+b)/2)));
+        }
+      }
+      for (const angle of [rockStart,rockEnd]) {
+        face([ringPoint(radius,angle,y),outline(angle,y),outline(angle,next),ringPoint(radius,angle,next)],sectionColor);
+        if (y < bottomY) {
+          const top = Math.min(next,bottomY);
+          face([[0,y,0],ringPoint(radius,angle,y),ringPoint(radius,angle,top),[0,top,0]],sectionColor);
+        }
+      }
+    }
+  }
+  for (const [lo,hi,color] of strata) {
+    terrainBand(lo,hi,boreRadius(lo),color);
+    if (hi === topY) continue;
+    for (const angle of [rockStart,rockEnd]) {
+      line([ringPoint(boreRadius(lo),angle,hi),outline(angle,hi)],"rgba(227,211,179,.30)",.9);
+      for (let i=0;i<12;i++) {
+        const y = lo+(hi-lo)*(.08+i*.073);
+        const edge = outline(angle,y);
+        const radius = Math.hypot(edge[0],edge[2]);
+        const from = boreRadius(y)+.04;
+        const r = from+(radius-from)*(.05+.65*frac((i+lo)*.618));
+        const length = .08+.34*frac(i*.271+hi);
+        line([ringPoint(r,angle,y),ringPoint(Math.min(radius-.02,r+length),angle,y)],
+          i%3===0 ? "rgba(234,216,187,.23)" : "rgba(53,42,37,.20)",.8);
+      }
+    }
+  }
+  for (let i=1;i<rockAngles.length;i++) {
+    const a = rockAngles[i-1], b = rockAngles[i];
+    face([ringPoint(casedRadius,a,topY),outline(a,topY),outline(b,topY),ringPoint(casedRadius,b,topY)],shade(gravel,1));
+  }
+  // У растущего керна открыта верхушка. Основание стыкуется с забоем без второй грани.
+  ringFace(hasCore ? core : 0,bore,bottomY,rockStart,rockEnd,shade(bottomColor,1));
+
+  // Неподвижная обсадка у устья. Ниже башмака канал ограничивает стенка породы.
+  ringFace(bore,casingInner,casingBottom,rockStart,rockEnd,"#777766");
+  ringFace(casingInner,casingOuter,casingBottom,rockStart,rockEnd,"#788b82");
+  ringFace(casingOuter,casedRadius,casingBottom,rockStart,rockEnd,"#777766");
+  tube(casingInner,casingOuter,casingBottom,topY+.054,rockStart,rockEnd,[117,136,127]);
+  for(const angle of [rockStart,rockEnd]){
+    line([ringPoint(casingInner,angle,casingBottom),ringPoint(casingInner,angle,topY+.05)],"#a8beb3",1.25);
+  }
+
+  // Cutaway steel column, barrel, core, and a rotating toothed crown.
+  const barrelTop = bottomY+barrelHeight;
+  const barrelY = offset => cutY+offset*toolScale;
+  const pipeTop = 3.77-Math.min(.75,stroke);
+  const swivelRadius = Math.max(.279,pipeInner*1.04);
+  const headRadius = Math.max(.33,pipeBand,swivelRadius*1.06);
+  function segmentedShell(inner,start,end,low,high,radius,color,bands) {
+    let y = low;
+    for (const [bottom,top,outer,bandColor] of bands) {
+      tube(inner,radius,y,bottom,start,end,color);
+      ringFace(radius,outer,bottom,start,end,shade(bandColor,.85));
+      tube(inner,outer,bottom,top,start,end,bandColor);
+      ringFace(radius,outer,top,start,end,shade(bandColor,1.10));
+      y = top;
+    }
+    tube(inner,radius,y,high,start,end,color);
+  }
+  const barrelShoulder = barrelTop;
+  const pipeBottom = barrelShoulder+.175*toolScale;
+  const couplings = [];
+  for (let y = pipeTop-.35; y-.06 > pipeBottom; y -= 1.11) {
+    couplings.unshift([y-.06,y+.07,pipeBand,[152,178,183]]);
+  }
+  segmentedShell(pipeInner,pipeCut,TAU-pipeCut,pipeBottom,pipeTop-.14,pipeOuter,[117,145,155],couplings);
+  ringFace(pipeOuter,headRadius,pipeTop-.14,pipeCut,TAU-pipeCut,"#879ea5");
+  tube(pipeInner,headRadius,pipeTop-.14,pipeTop+.19,pipeCut,TAU-pipeCut,[151,177,185]);
+  ringFace(swivelRadius,headRadius,pipeTop+.19,pipeCut,TAU-pipeCut,"#a6c3cc");
+  tube(pipeInner,swivelRadius,pipeTop+.19,pipeTop+.36,pipeCut,TAU-pipeCut,[73,139,157]);
+  ringFace(pipeInner,swivelRadius,pipeTop+.36,pipeCut,TAU-pipeCut,"#5099ad");
+  // Переходник соединяет оба сечения без перекрытия внутреннего канала.
+  tube(barrelInner,barrelOuter,barrelShoulder,pipeBottom,barrelCut,TAU-barrelCut,[137,159,162],{upper:[pipeInner,pipeOuter]});
+  ringFace(pipeInner,pipeOuter,pipeBottom,pipeCut,barrelCut,"#8da1a8");
+  ringFace(pipeInner,pipeOuter,pipeBottom,TAU-barrelCut,TAU-pipeCut,"#8da1a8");
+  const barrelBodyLength = barrelShoulder-barrelY(.23);
+  const barrelBands = Array.from({length:4},(_,i) => {
+    const y = barrelY(.23)+barrelBodyLength*(.06+i*.25);
+    return [y,y+.032*toolScale,barrelBand,[106,129,134]];
+  });
+  segmentedShell(barrelInner,barrelCut,TAU-barrelCut,barrelY(.23),barrelShoulder,barrelOuter,[120,144,152],barrelBands);
+  // Двойная колонковая труба. Керн входит во внутреннюю трубу при проходке.
+  const receiverTop = barrelTop;
+  tube(receiverInner,receiverOuter,barrelY(.23),receiverTop,coreCut,TAU-coreCut,[155,170,172]);
+  ringFace(receiverInner,receiverOuter,receiverTop,coreCut,TAU-coreCut,"#aabbbc");
+  if (hasCore) {
+    // Срез породы и керн показывают один цвет пласта при любом ракурсе.
+    for(const [lo,hi,color] of strata){
+      const base=Math.max(lo,bottomY), top=Math.min(hi,coreTop);
+      if (top > base) tube(0,core,base,top,0,TAU,color,{flatOuter:true});
+    }
+    ringFace(0,core,coreTop,0,TAU,shade(rockColorBelow(coreTop),1));
+    // Тонкий контур сохраняет форму керна там, где цвет сливается с разрезом.
+    const coreEdge = "rgba(23,26,28,.44)";
+    line(ringAngles.map(angle=>ringPoint(core,angle,coreTop)),coreEdge,1);
+    const coreMiddle = mix(bottomY,coreTop,.5);
+    let left = {angle:0,x:Infinity}, right = {angle:0,x:-Infinity};
+    for (const angle of ringAngles) {
+      const {x} = project(ringPoint(core,angle,coreMiddle));
+      if (x<left.x) left = {angle,x};
+      if (x>right.x) right = {angle,x};
+    }
+    for (const {angle} of [left,right]) {
+      line([ringPoint(core,angle,bottomY),ringPoint(core,angle,coreTop)],coreEdge,1);
+    }
+  }
+  // Зубья примыкают к торцу коронки. На стыках строятся только открытые поверхности.
+  const crownCutEnd = TAU-coreCut;
+  const crownBase = barrelY(-.065), crownLip = barrelY(.23);
+  const toothInner = mix(crownInner,crownBody,.48);
+  tube(crownInner,crownBody,crownBase,barrelY(.16),coreCut,crownCutEnd,[178,108,69]);
+  tube(crownInner,crownCollar,barrelY(.16),crownLip,coreCut,crownCutEnd,[212,144,94]);
+  ringFace(crownBody,crownCollar,barrelY(.16),coreCut,crownCutEnd,"#a36a40");
+  ringFace(crownInner,receiverInner,crownLip,coreCut,crownCutEnd,"#e99e67");
+  ringFace(receiverOuter,barrelInner,crownLip,coreCut,crownCutEnd,"#e99e67");
+  ringFace(barrelOuter,crownCollar,crownLip,coreCut,crownCutEnd,"#e99e67");
+  ringFace(crownInner,toothInner,crownBase,coreCut,crownCutEnd,"#895339");
+  const teeth = [];
+  for (let i = 0; i < 12; i++) {
+    const a = (state.spin+i*TAU/12)%TAU;
+    const start = Math.max(a,coreCut), end = Math.min(a+.265,crownCutEnd);
+    if (start<end) teeth.push([start,end]);
+  }
+  teeth.sort((a,b)=>a[0]-b[0]);
+  let undersideStart = coreCut;
+  for (const [start,end] of teeth) {
+    ringFace(toothInner,crownBody,crownBase,undersideStart,start,"#895339");
+    tube(toothInner,crownRadius,barrelY(-.135),crownBase,start,end,[232,150,93]);
+    ringFace(toothInner,crownRadius,barrelY(-.135),start,end,"#b57750");
+    ringFace(crownBody,crownRadius,crownBase,start,end,"#ffb074");
+    undersideStart = end;
+  }
+  ringFace(toothInner,crownBody,crownBase,undersideStart,crownCutEnd,"#895339");
+
+  // Горизонтальная труба с торцами. Ось совпадает с осью штанги или колеса.
+  function cylinder(axis,center,length,r,color,sides = 12) {
+    const [x,y,z] = center;
+    const at = (a,end) => {
+      const u=r*Math.cos(a), v=r*Math.sin(a);
+      return axis === "x" ? [x+end,y+u,z+v] : [x+u,y+v,z+end];
+    };
+    const front=[], back=[];
+    for(let i=0;i<sides;i++){
+      front.push(at(i*TAU/sides,length/2));
+      back.push(at(i*TAU/sides,-length/2));
+    }
+    for(let i=0;i<sides;i++){
+      const j=(i+1)%sides;
+      face([front[i],front[j],back[j],back[i]],shade(color,.86+.19*Math.cos(i*TAU/sides)));
+    }
+    face(front,shade(color,1.05));
+    face(back,shade(color,.79));
+  }
+
+
+  // Геометрия отводов и частицы используют одну и ту же осевую линию.
+  function route(waypoints) {
+    const mix = (a,b,t) => a.map((v,i) => v+(b[i]-v)*t);
+    const points = [waypoints[0]];
+    for (let i=1;i<waypoints.length-1;i++) {
+      const a=mix(waypoints[i],waypoints[i-1],.24);
+      const b=mix(waypoints[i],waypoints[i+1],.24);
+      for(let j=0;j<=4;j++){
+        const t=j/4;
+        points.push(mix(mix(a,waypoints[i],t),mix(waypoints[i],b,t),t));
+      }
+    }
+    points.push(waypoints.at(-1));
+    const distances=[0];
+    for(let i=1;i<points.length;i++){
+      distances.push(distances[i-1]+Math.hypot(...points[i].map((v,k)=>v-points[i-1][k])));
+    }
+    const length=distances.at(-1);
+    function at(t) {
+      const distance=clamp(t,0,1)*length;
+      const i=distances.findIndex((d,k)=>k>0 && d>=distance);
+      return mix(points[i-1],points[i],(distance-distances[i-1])/(distances[i]-distances[i-1]));
+    }
+    return {points,at};
+  }
+
+  function duct(path,radius,color,cutaway=false) {
+    const start=cutaway ? .95 : 0;
+    const end=TAU-start, sides=cutaway ? 11 : 9;
+    const rings=path.points.map(([x,y,z],i)=>{
+      const a=path.points[Math.max(0,i-1)], b=path.points[Math.min(path.points.length-1,i+1)];
+      const dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2];
+      const horizontal=Math.hypot(dx,dz), length=Math.hypot(horizontal,dy);
+      const side=horizontal>1e-6 ? [-dz/horizontal,0,dx/horizontal] : [0,0,1];
+      const up=horizontal>1e-6 ? [-dx*dy/(horizontal*length),horizontal/length,-dz*dy/(horizontal*length)] : [1,0,0];
+      return Array.from({length:sides+1},(_,j)=>{
+        const angle=start+(end-start)*j/sides, u=Math.cos(angle)*radius, v=Math.sin(angle)*radius;
+        return [x+u*up[0]+v*side[0],y+u*up[1]+v*side[1],z+u*up[2]+v*side[2]];
+      });
+    });
+    for(let i=1;i<rings.length;i++){
+      for(let j=0;j<sides;j++){
+        face([rings[i-1][j],rings[i-1][j+1],rings[i][j+1],rings[i][j]],
+          shade(color,.80+.25*Math.cos(start+(end-start)*(j+.5)/sides-.35)));
+      }
+    }
+    if (cutaway) {
+      line(rings.map(r=>r[0]),"#ad8762",1.15);
+      line(rings.map(r=>r.at(-1)),"#b4946f",1.15);
+    }
+  }
+
+  const compressorOutlet = [-3.09,topY+.31,.31];
+  const swivelPort = [-swivelRadius,pipeTop+.28,.012];
+  const collector = {x:1.92,z:.58,stack:topY+1.13};
+  const mouthOutlet=[bore*.958,topY+.108,bore*.384];
+  const takeoff = route([
+    mouthOutlet,[sealOuter+.10,topY+.108,mouthOutlet[2]+.06],[1.20,topY+.11,.43],
+    [1.32,topY+.25,.47],[1.46,topY+.65,.52],[1.75,topY+.65,collector.z]
+  ]);
+  const supply = route([
+    compressorOutlet,[-2.95,topY+.25,.32],[-2.68,topY+.055,.46],
+    [-1.47,topY+.055,.54],[-.94,topY+.075,.30],
+    [-.77,topY+.30,.19],[-.69,topY+1.18,.09],[-.59,topY+1.36,.04],swivelPort
+  ]);
+
+  function drawCircuit() {
+    // Герметизатор и верхний отвод показаны в разрезе.
+    const portAngle = Math.atan2(mouthOutlet[0],mouthOutlet[2]);
+    const portHalfWidth = .114;
+    for (const [a,b] of [[rockStart,portAngle-portHalfWidth],[portAngle+portHalfWidth,rockEnd]]) {
+      tube(casingInner,sealOuter,topY+.054,topY+.177,a,b,[95,116,119]);
+    }
+    ringFace(mix(pipeBand,casingInner,.45),sealOuter,topY+.177,rockStart,rockEnd,"#8ba3a2");
+    duct(supply,.026,[48,61,65]);
+    duct(takeoff,.064,[127,103,79],true);
+    cylinder("x",[swivelPort[0]+.024,swivelPort[1],swivelPort[2]],.074,.046,[109,135,136]);
+    cylinder("x",[-3.117,compressorOutlet[1],compressorOutlet[2]],.065,.040,[117,132,131]);
+
+    const {x,z,stack}=collector;
+    const at=(r,a,y)=>[x+r*Math.sin(a),y,z+r*Math.cos(a)];
+    function shell(levels,color,open) {
+      const start=open ? .80 : 0, end=TAU-start;
+      for(let i=1;i<levels.length;i++){
+        const [y1,r1]=levels[i-1], [y2,r2]=levels[i];
+        for(let j=0;j<20;j++){
+          const a=start+(end-start)*j/20,b=start+(end-start)*(j+1)/20;
+          face([at(r1,a,y1),at(r1,b,y1),at(r2,b,y2),at(r2,a,y2)],
+            shade(color,.82+.19*Math.cos((a+b)/2+.5)));
+        }
+      }
+    }
+    for (const [dx,dz] of [[-.23,-.17],[.23,-.17],[.23,.17],[-.23,.17]]) {
+      box(x+dx-.026,topY,z+dz-.028,x+dx+.026,topY+.64,z+dz+.028,[69,82,78]);
+    }
+    box(x-.16,topY+.014,z-.151,x+.16,topY+.035,z+.169,[72,80,72]);
+    shell([[topY+.037,.148],[topY+.21,.15],[topY+.23,.138]], [104,113,103],true);
+    if (state.spoils>0) {
+      const level=topY+.044+state.spoils*.11;
+      const pile=Array.from({length:16},(_,i)=>at(.139,i*TAU/16,level));
+      face(pile,"#b1804e");
+      shell([[topY+.038,.139],[level,.139]], [156,113,69],true);
+    }
+    shell([[topY+.22,.065],[topY+.52,.216],[topY+.75,.216],[topY+.81,.111]], [120,143,139],true);
+    shell([[topY+.78,.078],[stack,.078],[stack,.053],[topY+.80,.053]], [140,159,155],false);
+  }
+
+  const returnAngle = rockStart-.105;
+  const outletAngle = Math.atan2(mouthOutlet[0],mouthOutlet[2]);
+  const outletRadius = Math.hypot(mouthOutlet[0],mouthOutlet[2]);
+  const adapterFraction = y => clamp((pipeBottom-y)/(pipeBottom-barrelShoulder),0,1);
+  function annulusAt(y, fraction, angleOffset = 0) {
+    // Шлам проходит снаружи инструмента и внутри стенки ствола или обсадки.
+    const body = mix(pipeOuter,barrelOuter,adapterFraction(y));
+    const band = (y >= pipeBottom ? couplings : barrelBands).find(([lo,hi])=>y>=lo && y<=hi);
+    const tool = y < crownLip ? crownRadius : band ? band[2] : body;
+    const wall = y >= casingBottom ? casingInner : bore;
+    const gap = wall-tool;
+    const lead = clamp((y-(topY-.23))/(mouthOutlet[1]-topY+.23),0,1);
+    const r = (tool+gap*fraction)*(1-lead)+outletRadius*lead;
+    const angle = (returnAngle+angleOffset)*(1-lead)+outletAngle*lead;
+    return {r,angle,gap};
+  }
+  function feedAt(y) {
+    return mix(pipeInner*.62,mix(receiverOuter,barrelInner,.53),adapterFraction(y));
+  }
+
+  const bitFlowY = mix(bottomY,barrelY(-.135),.5);
+  const columnLength = swivelPort[1]-bitFlowY;
+  const annulusLength = mouthOutlet[1]-bitFlowY;
+  const feedProgress = [], returnProgress = [];
+  let showingExhaust = false, showingCuttings = false;
+  const columnAngle = (y,i) => mix(-.14,.71,adapterFraction(y))+Math.sin(i*2.3)*.10;
+  function returnSection(t,i) {
+    const y = bitFlowY+annulusLength*t;
+    const {r,angle,gap} = annulusAt(y,.31+.43*frac(i*.7549),.115*Math.sin(i*2.43+t*6.8));
+    return {y,r,angle,gap};
+  }
+
+  const drawTransit = {
+    hose(t) {
+      if (close) return;
+      const [x,y,z] = supply.at(t);
+      // Маркеры идут вдоль видимой поверхности непрозрачного рукава.
+      particle([x,y+.027*t,z+.020*t],.019,"#92eeff",.92*clamp(t*15,0,1));
+    },
+    column(t,i) {
+      feedProgress.push(t);
+      const y = swivelPort[1]-columnLength*t;
+      const join = clamp(t*14,0,1);
+      const [x,,z] = ringPoint(feedAt(y),columnAngle(y,i),y);
+      particle([mix(swivelPort[0],x,join),y+.027*(1-join),mix(swivelPort[2]+.020,z,join)],
+        y<barrelTop?.010:.017,"#a8f3ff",.88,y>=barrelTop);
+    },
+    crown(t,i) {
+      const {r,angle} = returnSection(0,i);
+      const inner = Math.max(feedAt(bitFlowY),core+(bore-core)*.06);
+      particle(ringPoint(mix(inner,r,t),mix(columnAngle(bitFlowY,i),angle,t),bitFlowY),
+        .010,"#88e8fa",.85);
+    },
+    annulus(t,i,solid) {
+      returnProgress.push(t);
+      if (solid) showingCuttings = true;
+      const {y,r,angle,gap} = returnSection(t,i);
+      const radius = Math.min(solid?.016+.008*frac(i*.18):.012,gap*.18);
+      particle(ringPoint(r,angle,y),radius,solid?"#ffc184":"#84e0f4",.88,solid&&gap>.09);
+    },
+    outlet(t,i,solid) {
+      if (close) return;
+      const [x,y,z] = takeoff.at(t);
+      const edge = Math.sin(t*Math.PI);
+      particle([x,y+.021*edge,z+.012*edge*Math.sin(i*2)],solid?.017:.012,solid?"#ffc184":"#8feafa",.9);
+    },
+    separator(t,i) {
+      if (close) return;
+      const a = Math.PI+t*TAU*1.1+Math.sin(i)*.2*t;
+      const r = .17-.11*t;
+      const y = mix(topY+.65,topY+.044+state.spoils*.11,t);
+      particle([collector.x+r*Math.cos(a),y,collector.z+r*Math.sin(a)],.017,"#ffc184",.86*clamp((1-t)*4,0,1));
+    },
+    exhaust(t,i) {
+      if (close) return;
+      const rise = clamp(t/.42,0,1);
+      const plume = clamp((t-.42)/.58,0,1);
+      const r = plume*.12;
+      const a = i*2.399;
+      showingExhaust ||= plume>0;
+      particle([collector.x-.17*(1-clamp(rise*3,0,1))+Math.cos(a)*r,
+        mix(topY+.65,collector.stack,rise**1.5)+plume*.63,collector.z+Math.sin(a)*r],
+        mix(.012,.023,plume),"#a8edf3",.8*(1-plume),true);
+    }
+  };
+  for (const stream of streams) {
+    for (const index of stream.born) {
+      let age = state.flow-index/stream.rate;
+      for (const [leg,seconds] of stream.legs) {
+        if (age<seconds) {
+          drawTransit[leg](age/seconds,index,stream===cuttingsStream);
+          break;
+        }
+        age -= seconds;
+      }
+    }
+  }
+
+  function arrowOpacity(positions,t) {
+    const distance = positions.reduce((nearest,p)=>Math.min(nearest,Math.abs(p-t)),1);
+    return clamp(1.5-distance*14,0,1);
+  }
+  // Кэш цветов отрисовки использует конечное число оттенков прозрачности.
+  const arrowColor = (rgb,alpha)=>"rgba("+rgb+","+Math.round(alpha*24)/24+")";
+  for (let i=0;i<6;i++) {
+    const t = (i+.40)/6;
+    const y = swivelPort[1]-columnLength*t;
+    const feedAlpha = arrowOpacity(feedProgress,t);
+    if (feedAlpha>0) arrow(feedAt(y),y<barrelTop?.70:-.32,y,-1,arrowColor("142,238,255",feedAlpha),.086);
+    const rise = mix(barrelY(.34),topY-.03,t);
+    const returnAlpha = arrowOpacity(returnProgress,(rise-bitFlowY)/annulusLength);
+    if (returnAlpha>0) {
+      const {r,angle,gap} = annulusAt(rise,.65);
+      arrow(r,angle,rise,1,arrowColor("255,201,142",returnAlpha),Math.min(.105,gap*.62));
+    }
+  }
+
+  if (state.dustOpacity>0 && state.advance>0) {
+    for (let i=0;i<17;i++) {
+      const a = .04+i*.72+state.spin*.4;
+      const t = frac(i*.431+state.dust*.83);
+      const r = mix(crownRadius,bore,.17+.61*frac(i*.617));
+      particle(ringPoint(r,a,barrelY(-.083+Math.sin(t*Math.PI)*.12)),.008,
+        shade(bottomColor,1.63),state.dustOpacity*(.45+.33*(1-t)));
+    }
+  }
+
+  if (!close) {
+    const ground = topY;
+    const iron = [55,65,62];
+    const rubber = [47,51,48];
+    const yellow = [195,148,67];
+    const mast = [189,140,63];
+    const metal = [126,140,141];
+
+    // Плоские следы и гравий лежат на единой поверхности площадки.
+    function groundPatch(vertices,color,y = ground+.005) {
+      face(vertices.map(([x,z]) => [x,y,z]),color);
+    }
+    function footprint(x1,z1,x2,z2,color,y = ground+.008) {
+      groundPatch([[x1,z1],[x2,z1],[x2,z2],[x1,z2]],color,y);
+    }
+    groundPatch([[-5.14,-2.12],[-3.05,-2.82],[-2.81,-2.34],[-5.14,-1.46]],"#b1a481",ground+.004);
+    groundPatch([[-3.05,-2.82],[-1.63,-3.43],[.18,-3.43],[-2.81,-2.34]],"#b1a481",ground+.004);
+    for (let i=0;i<240;i++) {
+      const x = -5.02+10.04*frac(i*.618034);
+      const z = -3.39+5.21*frac(i*.414214+.17);
+      const dx=.02+.085*frac(i*.754878);
+      const speckle=[[x,z],[x+dx,z+.023],[x+dx*.7,z+.046]];
+      if (speckle.some(([x,z]) => Math.hypot(x,z)<sealOuter+.01 || (z>0 && Math.abs(x)<1.53*z))) continue;
+      groundPatch(speckle,
+        i%5 === 0 ? "#c7b993" : i%2 === 0 ? "#9a8b6c" : "#a29578",ground+.010);
+    }
+    for (const x of [-.478,.478]) {
+      footprint(x-.16,-3.96,x+.16,-.55,"#9a8e73");
+      for(let i=0;i<12;i++){
+        const z=-3.94+i*.277;
+        footprint(x-.12,z,x+.12,z+.022,"#8f8369",ground+.013);
+      }
+    }
+    footprint(-4.66,-.09,-3.12,.72,"#95876c");
+    footprint(2.80,1.025,3.57,1.48,"#95876c");
+    function groundShadow(x,z,rx,rz) {
+      for (const [scale,color] of [[1,"rgba(43,38,31,.19)"],[.76,"rgba(35,31,27,.22)"]]) {
+        const ellipse = Array.from({length:18},(_,i)=>{
+          const angle=i*TAU/18;
+          return [x+rx*scale*Math.cos(angle),z+rz*scale*Math.sin(angle)];
+        });
+        groundPatch(ellipse,color,ground+.016);
+      }
+    }
+    groundShadow(0,-2.23,.88,1.53);
+    groundShadow(-3.74,.31,.90,.45);
+    groundShadow(collector.x,collector.z,.44,.40);
+    groundShadow(3.16,1.22,.39,.31);
+    groundShadow(4.16,-.92,.75,.63);
+
+    // Станок около 7 × 2,5 м, верх мачты около 9 м от площадки.
+    const mastTop=ground+4.50;
+    for(const x of [-.478,.478]){
+      box(x-.145,ground+.015,-3.87,x+.145,ground+.36,-.57,rubber);
+      box(x-.095,ground+.09,-3.80,x+.095,ground+.31,-.65,[74,77,69]);
+      for(let i=0;i<10;i++){
+        const z=-3.72+i*.329;
+        cylinder("x",[x,ground+.168,z],.298,.116,[65,70,66],10);
+        box(x-.151,ground+.344,z-.022,x+.151,ground+.381,z+.022,[84,87,78]);
+      }
+      box(x-.115,ground+.006,-.57,x+.115,ground+.05,-.39,iron);
+      box(x-.038,ground+.05,-.535,x+.038,ground+.56,-.453,metal);
+      box(x-.116,ground+.48,-.58,x+.116,ground+.55,-.40,mast);
+    }
+    box(-.625,ground+.355,-3.88,.625,ground+.63,-.44,iron);
+    box(-.545,ground+.631,-3.80,.545,ground+1.13,-1.89,yellow);
+    box(-.526,ground+1.132,-3.78,.526,ground+1.19,-1.91,[73,83,78]);
+    box(-.45,ground+.631,-1.88,.45,ground+.87,-.79,[83,95,90]);
+    for(let i=0;i<7;i++){
+      const x=-.42+i*.123;
+      line([[x,ground+.73,-1.886],[x,ground+1.04,-1.886]],"#66553b",1.8);
+    }
+    box(-.36,ground+.54,-1.04,.36,ground+.73,-.36,iron);
+    for(const x of [-.235,.235]){
+      box(x-.055,ground+.72,-.65,x+.055,mastTop-.10,-.45,mast);
+      box(x-.026,ground+.77,-.449,x+.026,mastTop-.12,-.407,metal);
+      line([[x,ground+.70,-1.52],[x,ground+2.10,-.62]],"#646e63",4.0);
+      line([[x,ground+1.35,-1.09],[x,ground+2.10,-.62]],"#9da9a2",2.4);
+    }
+    box(-.319,mastTop-.15,-.683,.319,mastTop,-.405,yellow);
+    for(let i=0;i<8;i++){
+      const y=ground+.85+i*.44;
+      line([[-.21,y,-.64],[.21,y+.37,-.64]],"#aa834a",2.0);
+      line([[-.21,y,-.64],[.21,y,-.64]],"#c7a364",1.5);
+    }
+    box(-.33,pipeTop+.015,-.40,.33,pipeTop+.205,-.24,[92,115,125]);
+    box(-.18,pipeTop+.038,-.239,.18,pipeTop+.18,-.085,[92,115,125]);
+    for(const x of [-.21,.21]){
+      line([[x,mastTop-.13,-.40],[x,pipeTop+.207,-.40]],"#46514b",1.3);
+    }
+
+    // Прицепной компрессор около 3 × 1,35 × 1,45 м вместе с дышлом.
+    const compX=-3.68, compZ=.31;
+    box(-4.22,ground+.126,.04,-3.15,ground+.21,.59,iron);
+    box(-4.20,ground+.211,.075,-3.17,ground+.68,.55,yellow);
+    box(-4.17,ground+.681,.094,-3.195,ground+.722,.534,[214,167,85]);
+    box(-4.168,ground+.235,.551,-3.713,ground+.518,.565,[63,74,72]);
+    for(let i=0;i<5;i++){
+      const y=ground+.274+i*.047;
+      line([[-4.124,y,.566],[-3.755,y,.566]],"#a4a99b",1.1);
+    }
+    for (const side of [-1,1]){
+      const z=compZ+side*.28;
+      cylinder("z",[compX,ground+.153,z],.114,.153,rubber,16);
+      cylinder("z",[compX,ground+.153,z+side*.063],.021,.061,metal,12);
+    }
+    line([[-4.20,ground+.151,.09],[-4.66,ground+.13,.31],[-4.20,ground+.151,.52]],"#3d4841",3.5);
+    line([[-4.65,ground+.13,.31],[-4.65,ground+.014,.31]],"#657067",2.1);
+    textAt([-4.123,ground+.587,.567],"КОМПРЕССОР",.090,"#253028");
+    disc(-3.273,ground+.52,.552,.027,state.air?"#84e4ee":"#667563");
+    drawCircuit();
+
+    // Стеллаж с буровыми штангами и отдельный стол с ящиками керна.
+    for(const x of [1.91,4.10]){
+      box(x-.07,ground,-2.67,x+.07,ground+.39,-2.02,iron);
+      box(x-.15,ground+.30,-2.74,x+.15,ground+.40,-1.94,[116,93,66]);
+    }
+    for(let i=0;i<4;i++){
+      const z=-2.63+i*.19;
+      const x=3.02+(i%2)*.09;
+      cylinder("x",[x,ground+.457,z],2.5,.057,[94,108,107],10);
+      cylinder("x",[x+1.12,ground+.457,z],.17,.064,[123,133,126],10);
+    }
+    for(const x of [3.55,4.79]) for(const z of [-1.31,-.55]){
+      box(x-.05,ground,z-.05,x+.05,ground+.59,z+.05,iron);
+    }
+    box(3.41,ground+.59,-1.45,4.94,ground+.68,-.42,[104,105,88]);
+    for(let i=0;i<2;i++){
+      const z=-1.38+i*.49;
+      box(3.49,ground+.681,z,4.86,ground+.72,z+.42,[137,107,70]);
+      for(const edge of [z,z+.195,z+.39]){
+        box(3.49,ground+.72,edge,4.86,ground+.79,edge+.024,[162,127,83]);
+      }
+      for(const x of [3.49,4.82]) box(x,ground+.72,z+.024,x+.039,ground+.79,z+.39,[162,127,83]);
+      for(let j=0;j<2;j++){
+        for(const [x,length,stone] of [[3.73,.33,[177,150,114]],[4.12,.39,[140,128,107]],[4.58,.42,[168,145,121]]]){
+          cylinder("x",[x,ground+.777,z+.112+j*.195],length,.058,stone,10);
+        }
+      }
+    }
+
+    // Ограждение размечает рабочую зону по краям площадки.
+    function barrier(x1,z1,x2,z2) {
+      for(const [x,z] of [[x1,z1],[x2,z2]]) {
+        box(x-.084,ground,z-.084,x+.084,ground+.035,z+.084,iron);
+        box(x-.034,ground+.035,z-.034,x+.034,ground+.52,z+.034,yellow);
+      }
+      for(const y of [ground+.31,ground+.50]) {
+        line([[x1,y,z1],[x2,y,z2]],"#b39050",2.8);
+      }
+    }
+    barrier(-4.72,1.55,-2.66,1.55);
+    barrier(3.79,1.60,4.78,1.60);
+    barrier(4.88,-2.97,4.88,-1.93);
+
+    // Пульт на стойке рядом с оператором. Зоны нажатия привязаны к 3D-кнопкам.
+    box(2.92,ground+.006,1.05,3.40,ground+.061,1.40,iron);
+    box(3.088,ground+.061,1.18,3.231,ground+.286,1.285,[99,111,107]);
+    box(2.80,ground+.265,1.10,3.52,ground+.975,1.308,[85,107,97]);
+    box(2.83,ground+.29,1.309,3.49,ground+.952,1.326,[133,151,136]);
+    textAt([2.88,ground+.896,1.329],"ПУЛЬТ",.089,"#172a24");
+    disc(3.331,ground+.90,1.329,.018,state.drill?"#a5e572":"#52604d");
+    disc(3.414,ground+.90,1.329,.018,state.air?"#88e5f3":"#4b625d");
+    for (const control of panelButtons) {
+      const x=2.952;
+      const front=control.pressed ? 1.356 : 1.386;
+      cylinder("z",[x,control.y,1.332],.011,.065,[41,60,52],16);
+      cylinder("z",[x,control.y,(front+1.338)/2],front-1.338,.051,control.color,16);
+      disc(x-.011,control.y+.011,front+.002,.023,shade(control.color,1.19));
+      textAt([3.062,control.y,1.329],control.label,.092,"#172b23");
+      if (activePage!=="case" && cyaw>0) placeSceneButton(control.node,project([x,control.y,front]));
+      else control.node.hidden = true;
+    }
+  } else {
+    for (const control of panelButtons) control.node.hidden = true;
+  }
+
+  ctx.clearRect(0,0,width,height);
+  renderer.draw(items,project);
+
+  const yaw = Math.abs(state.yaw);
+  const cutawayVisible = Math.min(yaw,TAU-yaw)<rockStart;
+  projectParticle = null;
+  particleViewNote = "";
+  if (activePage==="model" && particlePanel.open && particleResult?.show) {
+    const {barrel} = particleResult;
+    const low = barrel ? bottomY+.22*barrelHeight : pipeBottom;
+    const high = barrel ? Math.min(casingBottom,bottomY+.86*barrelHeight) : casingBottom;
+    if (high<=low) particleViewNote = "Выбранный участок открытого ствола отсутствует при этой глубине.";
+    else if (yard || !cutawayVisible || close!==barrel) particleViewNote = "Для метки верните исходный ракурс «"+(barrel?"Забой":"Разрез")+"» со стороны выреза.";
+    else projectParticle = phase=>{
+      const y = mix(low,high,.12+.76*phase);
+      const {r,angle} = annulusAt(y,.5);
+      return project(ringPoint(r,angle,y));
+    };
+  }
+  if (activePage === "case") {
+    const annulus = annulusAt(barrelTop,.65);
+    const foot = annulusAt(bitFlowY,.65);
+    const downColor = "#85dff8", upColor = "#ffc377";
+    drawAnnotations([
+      ["P1",project(ringPoint(annulus.r,annulus.angle,barrelTop)),"right",!yard&&cutawayVisible,upColor,-23],
+      ["P2",project(ringPoint(foot.r,foot.angle,bitFlowY)),"right",!yard&&cutawayVisible,upColor,13],
+      ["P3",project(ringPoint(feedAt(barrelTop),-.28,barrelTop)),"left",!yard&&cutawayVisible,downColor,-8],
+      ["P4",project([0,swivelPort[1],0]),"right",!close&&cutawayVisible,downColor,12],
+      ["Pres",project([-3.66,topY+.58,.55]),"left",!close,downColor,-20]
+    ]);
+    return;
+  }
+  const feedY = close ? pipeBottom+.25 : mix(casingBottom,barrelTop,.20);
+  const returnY = close ? mix(barrelY(.23),barrelShoulder,.59) : mix(casingBottom,barrelTop,.40);
+  const returnAnchor = annulusAt(returnY,.72);
+  const returnText = showingCuttings ? "Вынос шлама" : "Затрубный зазор";
+  if (returnLabel.textContent!==returnText) returnLabel.textContent = returnText;
+  drawAnnotations([
+    ["feed",project(ringPoint(feedAt(feedY),-.36,feedY)),"left",!yard&&cutawayVisible&&arrowOpacity(feedProgress,(swivelPort[1]-feedY)/columnLength)>.12,"#85dff8",-8],
+    ["return",project(ringPoint(returnAnchor.r,returnAnchor.angle,returnY)),"right",!yard&&cutawayVisible,"#ffc377",-4],
+    ["casing",project(ringPoint(casingOuter,-rockStart,2.16)),"left",!close&&!yard&&cutawayVisible,"#b4ccd5",-8],
+    ["receiver",project(ringPoint(receiverOuter,-coreCut,mix(barrelY(.23),receiverTop,.67))),"left",close&&cutawayVisible,"#b4ccd5",-10],
+    ["core",project(ringPoint(core,state.yaw,mix(bottomY,coreTop,.63))),"left",!yard&&cutawayVisible&&hasCore&&stroke>.012,"#ebc9a2",6],
+    ["bit",project(ringPoint(crownBody,coreCut,barrelY(.05))),"right",!yard&&cutawayVisible,"#ffa279",13],
+    ["compressor",project([-3.66,topY+.58,.55]),"left",yard,"#85dff8",-42],
+    ["collector",project([collector.x,topY+.57,collector.z]),"right",yard,"#ffc377",-12],
+    ["exhaust",project([collector.x,collector.stack+.13,collector.z]),"right",yard&&showingExhaust,"#85dff8",-20]
+  ]);
+}
+
+function placeSceneButton(button,p) {
+  const size = clamp(p.scale*.155,11,27);
+  const outside = p.x < size || p.x > width-size || p.y-size/2 < sceneBar.offsetTop+sceneBar.offsetHeight || p.y > height-46;
+  button.hidden = outside;
+  if (outside) return;
+  button.style.width = size+"px";
+  button.style.height = size+"px";
+  button.style.transform = "translate("+(p.x-size/2)+"px,"+(p.y-size/2)+"px)";
+}
+
+function drawAnnotations(entries) {
+  const top = sceneBar.offsetTop+sceneBar.offsetHeight+4;
+  const bottom = height-(width<480 ? 68 : 53);
+  const inset = width<480 ? 10 : 17;
+  const leader = width<480 ? 24 : Math.min(width*.105,124);
+  const lanes = {left:[],right:[]};
+  for (const [name,p,side,visible,color,offset] of entries) {
+    const node = labels[name];
+    node.hidden = !visible || p.y<top || p.y>bottom || p.x<inset || p.x>width-inset;
+    if (!node.hidden) lanes[side].push({node,p,color,preferred:p.y+offset});
+  }
+  for (const [side,items] of Object.entries(lanes)) {
+    items.sort((a,b)=>a.preferred-b.preferred);
+    let cursor = top;
+    for (const item of items) {
+      item.height = item.node.offsetHeight;
+      item.y = Math.max(cursor,item.preferred-item.height/2);
+      cursor = item.y+item.height+7;
+    }
+    cursor = bottom;
+    for (let i=items.length-1;i>=0;i--) {
+      const item = items[i];
+      item.y = Math.min(item.y,cursor-item.height);
+      cursor = item.y-7;
+    }
+    for (const {node,p,color,y,height:h} of items) {
+      const w = node.offsetWidth;
+      const x = clamp(side==="left" ? p.x-leader-w : p.x+leader,inset,width-w-inset);
+      const edge = side==="left" ? x+w : x;
+      node.style.transform = "translate("+Math.round(x)+"px,"+Math.round(y)+"px)";
+      if (Math.abs(edge-p.x)<4) continue;
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = .72;
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      ctx.moveTo(p.x,p.y);
+      ctx.lineTo(p.x+(edge-p.x)*.42,y+h/2);
+      ctx.lineTo(edge,y+h/2);
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,2.8,0,TAU);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+function updateOperation() {
+  const complete = state.advance === 1;
+  const canStart = !complete || state.mode === "air";
+  if (!canStart) state.running = false;
+  state.drill = state.running && state.mode !== "air";
+  state.air = state.running && state.mode !== "drill";
+
+  let text = "Готово к пуску";
+  if (state.drill && state.air) text = "Бурение и продувка";
+  else if (state.drill) text = "Бурение";
+  else if (state.air) text = "Продувка";
+  else if (hasTransit()) text = complete ? "Конечная глубина · затухание потока" : "Затухание потока";
+  else if (state.dustOpacity>0) text = complete ? "Конечная глубина · оседание пыли" : "Оседание пыли";
+  else if (complete) text = "Достигнута конечная глубина";
+  else if (state.advance > 0 || state.flow > 0) text = "Установка остановлена";
+  if (activePage === "case") text = "Разрез на конечной глубине";
+  if (status.textContent !== text) status.textContent = text;
+  status.classList.toggle("active", state.running);
+  status.classList.toggle("complete", complete && !state.running);
+  play.disabled = panelButtons[0].node.disabled = !canStart;
+  drillLamp.classList.toggle("on", state.drill);
+  airLamp.classList.toggle("on", state.air);
+  needsDraw = true;
+}
+
+function startPass() {
+  state.running = true;
+  updateOperation();
+}
+
+function stopPass() {
+  state.running = false;
+  updateOperation();
+}
+
+function resetPass() {
+  for (const stream of streams) stream.born.length = 0;
+  Object.assign(state, initialPass);
+  stopPass();
+}
+
+for (const control of panelButtons) {
+  const activate = () => {
+    clearTimeout(control.releaseTimer);
+    control.pressed = true;
+    control.action();
+    control.releaseTimer = setTimeout(() => {
+      control.pressed = false;
+      needsDraw = true;
+    }, 160);
+  };
+  control.node.addEventListener("click", activate);
+  control.sidebar.addEventListener("click", activate);
+  control.sidebar.disabled = false;
+}
+
+const modeButtons = document.querySelectorAll("[data-mode]");
+modeButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    state.mode = button.dataset.mode;
+    modeButtons.forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+    document.querySelector("#mode-description").textContent = descriptions[state.mode];
+    updateOperation();
+  });
+});
+
+const viewButtons = [...document.querySelectorAll("[data-view]")];
+function selectView(view) {
+  const {yaw,pitch} = cameras[view];
+  Object.assign(state,{view,yaw,pitch,zoom:1});
+  updateViewButtons();
+  needsDraw = true;
+}
+function updateViewButtons() {
+  sceneName.textContent = cameras[state.view].caption;
+  for (const button of viewButtons) button.setAttribute("aria-pressed",String(button.dataset.view===state.view));
+}
+for (const button of viewButtons) button.addEventListener("click",()=>selectView(button.dataset.view));
+
+function setPresentation(active) {
+  document.body.classList.toggle("presentation",active);
+  presentationButton.setAttribute("aria-pressed",String(active));
+  presentationLabel.textContent = active ? "Выйти из режима доклада" : "Режим доклада";
+}
+presentationButton.addEventListener("click",async ()=>{
+  if (document.fullscreenElement) {
+    await document.exitFullscreen();
+  } else if (document.body.classList.contains("presentation")) {
+    setPresentation(false);
+  } else {
+    try {
+      await document.documentElement.requestFullscreen();
+    } catch {
+      setPresentation(true);
+    }
+  }
+});
+document.addEventListener("fullscreenchange",()=>setPresentation(Boolean(document.fullscreenElement)));
+document.addEventListener("keydown",event=>{
+  if (geometryDialog.open) return;
+  if (event.key==="Escape") {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(()=>{});
+    } else {
+      setPresentation(false);
+    }
+    return;
+  }
+  if (modelPage.hidden || event.altKey || event.ctrlKey || event.metaKey || event.repeat ||
+      event.target.closest?.("input, textarea, select, [contenteditable]")) return;
+  const view = {"1":"yard","2":"overview","3":"bit"}[event.key];
+  if (!view) return;
+  event.preventDefault();
+  selectView(view);
+});
+
+tempo.addEventListener("input", () => {
+  state.speed = Number(tempo.value);
+  document.querySelector("#tempo-value").textContent = "×" + state.speed.toLocaleString("ru-RU");
+});
+
+let drag = null;
+function rotateAzimuth(delta) {
+  state.yaw = (state.yaw+delta)%TAU;
+  if (state.yaw<0) state.yaw += TAU;
+}
+
+canvas.addEventListener("pointerdown", event => {
+  if (event.button !== 0) return;
+  drag = {id:event.pointerId,x:event.clientX,y:event.clientY};
+  canvas.setPointerCapture(event.pointerId);
+});
+canvas.addEventListener("pointermove", event => {
+  if (!drag || drag.id !== event.pointerId) return;
+  rotateAzimuth(-(event.clientX-drag.x)*.006);
+  state.pitch = clamp(state.pitch+(event.clientY-drag.y)*.004,.09,.43);
+  drag.x = event.clientX;
+  drag.y = event.clientY;
+  needsDraw = true;
+});
+canvas.addEventListener("lostpointercapture", () => {drag = null;});
+canvas.addEventListener("wheel", event => {
+  event.preventDefault();
+  state.zoom = clamp(state.zoom*Math.exp(-event.deltaY*.0014),.7,1.75);
+  needsDraw = true;
+}, {passive:false});
+canvas.addEventListener("keydown", event => {
+  switch (event.key) {
+    case "ArrowLeft": rotateAzimuth(-.075); break;
+    case "ArrowRight": rotateAzimuth(.075); break;
+    case "ArrowUp": state.pitch = clamp(state.pitch+.035,.09,.43); break;
+    case "ArrowDown": state.pitch = clamp(state.pitch-.035,.09,.43); break;
+    case "+": case "=": state.zoom = clamp(state.zoom*1.1,.7,1.75); break;
+    case "-": state.zoom = clamp(state.zoom/1.1,.7,1.75); break;
+    default: return;
+  }
+  event.preventDefault();
+  needsDraw = true;
+});
+
+new ResizeObserver(() => {
+  const nextWidth = canvas.clientWidth, nextHeight = canvas.clientHeight;
+  if (!nextWidth || !nextHeight) return;
+  const nextRatio = Math.min(window.devicePixelRatio || 1, 2);
+  if (width===nextWidth && height===nextHeight && pixelRatio===nextRatio) return;
+  width = nextWidth;
+  height = nextHeight;
+  pixelRatio = nextRatio;
+  canvas.width = Math.max(1, Math.round(width * pixelRatio));
+  canvas.height = Math.max(1, Math.round(height * pixelRatio));
+  ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);
+  renderer.resize(width,height,pixelRatio);
+  needsDraw = true;
+}).observe(canvas);
+
+function hasTransit() {
+  return streams.some(stream=>stream.born.length>0);
+}
+
+function advanceFlow(delta) {
+  const previous = state.flow;
+  state.flow += delta;
+  const airReachesBit = airStream.born.some(index=>{
+    const age = state.flow-index/airStream.rate;
+    return age>=airAtCrown && age<airAtCrown+crownTime;
+  });
+  for (const stream of streams) {
+    const inTransit = stream.born.filter(index=>state.flow-index/stream.rate<stream.duration);
+    if (stream===cuttingsStream) {
+      const settled = stream.born.length-inTransit.length;
+      state.spoils = Math.min(1,state.spoils+settled*.065/stream.rate);
+    }
+    stream.born = inTransit;
+
+    // Каждый маркер проходит путь один раз. После отключения остаются только
+    // частицы, уже вошедшие в рукав или затрубный зазор.
+    if (!state.air || (stream===cuttingsStream && (!airReachesBit || state.advance===0))) continue;
+    const last = Math.floor(state.flow*stream.rate);
+    for (let index=Math.floor(previous*stream.rate)+1;index<=last;index++) {
+      stream.born.push(index);
+    }
+  }
+}
+
+function tick(time) {
+  const delta = lastTime ? Math.min((time-lastTime)/1000,.05)*state.speed : 0;
+  lastTime = time;
+  if (!geometry || modelPage.hidden || geometryDialog.open) {
+    requestAnimationFrame(tick);
+    return;
+  }
+  if (state.drill) {
+    state.advance = Math.min(1,state.advance + delta/15);
+    state.spin = (state.spin+delta*3.6)%TAU;
+    needsDraw = true;
+  }
+  const dustBefore = state.dustOpacity;
+  if (state.drill && !state.air) state.dustOpacity = 1;
+  else state.dustOpacity = Math.max(0,state.dustOpacity-delta/.85);
+  if (dustBefore>0 || state.dustOpacity>0) {
+    state.dust += delta;
+    if (dustBefore>0 && state.dustOpacity===0) updateOperation();
+    needsDraw = true;
+  }
+  if (state.drill && state.advance===1) stopPass();
+
+  const particlesInTransit = hasTransit();
+  if (state.air || particlesInTransit) {
+    advanceFlow(delta);
+    if (!state.air && !hasTransit()) updateOperation();
+    needsDraw = true;
+  }
+  if (needsDraw && width > 0 && height > 0) {
+    updateDepth();
+    frame();
+    needsDraw = false;
+  }
+  animateParticle(delta);
+  requestAnimationFrame(tick);
+}
+
+function navigate() {
+  const hash = window.location.hash.slice(1);
+  const page = ["case","calculation","formulas"].includes(hash) ? hash : "model";
+  const isCase = page === "case";
+  if (isCase && activePage !== "case") {
+    savedModel = {dimensions,state:{...state},particles:streams.map(stream=>stream.born.slice())};
+    resetPass();
+    state.advance = 1;
+    applyDimensions(defaultDimensions);
+    selectView("overview");
+  } else if (!isCase && activePage === "case") {
+    Object.assign(state,savedModel.state);
+    streams.forEach((stream,index)=>{stream.born = savedModel.particles[index];});
+    applyDimensions(savedModel.dimensions);
+    updateViewButtons();
+    savedModel = undefined;
+  }
+  activePage = page;
+  for (const label of Object.values(labels)) label.hidden = true;
+  modelPage.hidden = page !== "model" && !isCase;
+  calculationPage.hidden = page !== "calculation";
+  formulasPage.hidden = page !== "formulas";
+  editGeometry.hidden = isCase;
+  closeSample.hidden = !isCase;
+  sampleInfo.hidden = !isCase;
+  modelPage.classList.toggle("sample-mode",isCase);
+  for (const link of pageLinks) {
+    if (link.dataset.page === (isCase ? "calculation" : page)) link.setAttribute("aria-current","page");
+    else link.removeAttribute("aria-current");
+  }
+  updateOperation();
+  window.scrollTo(0,0);
+}
+
+applyDimensions(defaultDimensions);
+window.addEventListener("hashchange",navigate);
+navigate();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
+
