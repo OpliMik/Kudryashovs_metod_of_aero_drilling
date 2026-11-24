@@ -131,6 +131,9 @@ h1 {
 .report-card h2 { margin: 0 0 10px; font-size: clamp(17px, 2vw, 23px); line-height: 1.25; }
 .report-card h3 { margin: 15px 0 6px; font-size: 14px; color: var(--cyan); }
 .report-card p { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+#readme :is(ol, ul) { margin: 8px 0 0; padding-inline-start: 1.4em; color: var(--muted); font-size: 14px; line-height: 1.55; }
+#readme li + li { margin-top: 5px; }
+#readme li strong { color: var(--ink); }
 .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .report-table th, .report-table td { padding: 7px 0; border-bottom: 1px solid var(--line); text-align: left; }
 .report-table tr:last-child > * { border-bottom: 0; }
@@ -614,6 +617,7 @@ input[type="range"] { width: 100%; margin: 7px 0 0; accent-color: var(--cyan); }
     <a href="#model" data-page="model" aria-current="page">3D-модель</a>
     <a href="#calculation" data-page="calculation">Расчёт Кудряшова</a>
     <a href="#formulas" data-page="formulas">Формулы</a>
+    <a href="#readme" data-page="readme">Readme</a>
   </nav>
   <section id="model" aria-labelledby="model-title">
   <div class="intro"><div><h1 id="model-title">Бурение с продувкой</h1><p>От подачи воздуха на площадке до отбора керна на забое</p></div></div>
@@ -833,6 +837,42 @@ input[type="range"] { width: 100%; margin: 7px 0 0; accent-color: var(--cyan); }
 <label class="geometry-field">Полный КПД, от 0 до 1 (исключая 0)<input id="power-alt-eta" inputmode="decimal"></label>
 </div><p><output id="power-alt-result"></output></p></div><p><strong><output id="power-difference" aria-live="polite"></output></strong></p>
 <p>Исходный полный КПД 0,70, часы и цена заданы для примера. Для второго режима введите параметры полного контура. Сравнивайте стоимость при одинаковой проходке и выносе шлама.</p></section>
+    </div>
+  </section>
+  <section class="report" id="readme" aria-labelledby="readme-title" hidden>
+    <div class="intro">
+      <h1 id="readme-title">Инструкция к модели</h1>
+      <p>Скачайте HTML-файл и откройте его в браузере с включённым JavaScript. Модель и расчёты работают без подключения к интернету.</p>
+    </div>
+    <div class="report-grid">
+      <div class="report-card">
+        <h2>Запуск 3D-модели</h2>
+        <ol>
+          <li>На вкладке <strong>«3D-модель»</strong> нажмите <strong>«Перестроить 3D»</strong>, если хотите изменить геометрию. Глубину, проходку и длину колонковой трубы вводите в метрах, диаметры в миллиметрах. Подтвердите кнопкой <strong>«Построить 3D-модель»</strong>. Кнопка <strong>«Исходные размеры»</strong> восстанавливает значения по умолчанию в форме.</li>
+          <li>Выберите <strong>«Бурение + продувка»</strong>, <strong>«Бурение»</strong> или <strong>«Продувка»</strong>, затем нажмите <strong>«Пуск»</strong>. <strong>«Стоп»</strong> останавливает установку, <strong>«Сброс»</strong> возвращает проходку в начало.</li>
+          <li>Перетаскивайте сцену для поворота, прокручивайте колёсико для изменения масштаба. Клавиши <strong>1</strong>, <strong>2</strong> и <strong>3</strong> открывают площадку, разрез и забой соответственно.</li>
+        </ol>
+        <div class="report-links"><a class="screen-button page-action" href="#model">Открыть 3D-модель</a></div>
+      </div>
+      <div class="report-card">
+        <h2>Демонстрация витания частицы</h2>
+        <ol>
+          <li>В 3D-модели раскройте <strong>«Витание частицы в затрубном зазоре»</strong>. Для этого опыта пуск установки не требуется.</li>
+          <li>Выберите участок у бурильной или колонковой трубы. Введите диаметр частицы в мм, её плотность в кг/м³, абсолютное давление в МПа и температуру воздуха в К. Расход в м³/мин задайте при условиях выбранного сечения.</li>
+          <li>На исходной геометрии у бурильной трубы задайте частицу диаметром <strong>1 мм</strong> и плотностью <strong>2300 кг/м³</strong> при <strong>0,10 МПа</strong> и <strong>290 К</strong>. При <strong>1 м³/мин</strong> фиолетовая метка опускается. Кнопка <strong>«Установить расход витания»</strong> задаёт около <strong>1,861 м³/мин</strong> и останавливает метку. При <strong>3 м³/мин</strong> метка поднимается.</li>
+        </ol>
+        <p>Расчётный порог относится к одиночной сферической частице. Для оценки полной очистки скважины нужны данные о выносе шлама. Движение метки показано в условном масштабе времени.</p>
+      </div>
+      <div class="report-card">
+        <h2>Расчёт Кудряшова</h2>
+        <p>На вкладке приведены исходные данные, давления, скорости и мощность для одного примера М1. Кнопка <strong>«Показать расчёт в 3D»</strong> отмечает точки давления на разрезе. Изменение геометрии на вкладке «3D-модель» не пересчитывает этот пример.</p>
+        <div class="report-links"><a class="screen-button page-action" href="#calculation">Открыть расчёт</a></div>
+      </div>
+      <div class="report-card">
+        <h2>Мощность и стоимость работы компрессора</h2>
+        <p>На вкладке <strong>«Формулы»</strong> найдите блок <strong>«Электрическая мощность компрессора»</strong>. Задайте часы работы и цену электроэнергии в ₽/кВт·ч. Для каждого режима нужны расход воздуха на входе в компрессор, абсолютное давление на выходе и полный КПД. Для сопоставления затрат выбирайте режимы с одинаковой проходкой и выносом шлама.</p>
+        <div class="report-links"><a class="screen-button page-action" href="#formulas">Открыть формулы</a></div>
+      </div>
     </div>
   </section>
 </main>
@@ -1289,6 +1329,7 @@ const geometryInterval = document.querySelector("#geometry-interval");
 const modelPage = document.querySelector("#model");
 const calculationPage = document.querySelector("#calculation");
 const formulasPage = document.querySelector("#formulas");
+const readmePage = document.querySelector("#readme");
 const pageLinks = document.querySelectorAll(".page-nav a");
 const editGeometry = document.querySelector("#edit-geometry");
 const closeSample = document.querySelector("#close-sample");
@@ -2741,7 +2782,7 @@ function tick(time) {
 
 function navigate() {
   const hash = window.location.hash.slice(1);
-  const page = ["case","calculation","formulas"].includes(hash) ? hash : "model";
+  const page = ["case","calculation","formulas","readme"].includes(hash) ? hash : "model";
   const isCase = page === "case";
   if (isCase && activePage !== "case") {
     savedModel = {dimensions,state:{...state},particles:streams.map(stream=>stream.born.slice())};
@@ -2761,6 +2802,7 @@ function navigate() {
   modelPage.hidden = page !== "model" && !isCase;
   calculationPage.hidden = page !== "calculation";
   formulasPage.hidden = page !== "formulas";
+  readmePage.hidden = page !== "readme";
   editGeometry.hidden = isCase;
   closeSample.hidden = !isCase;
   sampleInfo.hidden = !isCase;
